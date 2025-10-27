@@ -1,0 +1,82 @@
+#! /bin/zsh
+
+# zyping
+
+# TODO
+# premature end with calcs on return
+# process input args
+# colors, bold
+# keep track of best scores
+# track slow words (timer for each word)
+# env vars to parameterize
+
+dict=~/contrib/dict/3-10k.num
+nwords=20
+poolsize=300
+pattern='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)'
+pensecs=1 # penalty seconds
+
+ques=( $(grep -E $pattern $dict | head -n $poolsize | cut -f3 | shuf | head -n $nwords) )
+queschars=$ques
+
+# Show test words wrapped at 80 chars
+print
+fold -w80 -s <<<$ques
+
+print '\nStart typing to begin test, <enter> to end.\n'
+read -sk1 'char1?> '
+print -n "$char1"
+
+integer t0=$(date '+%s')
+
+read && ans=( $char1$=REPLY )
+
+typos=(  $( comm -13 <(sort <(print -l $ques)) <(sort <(print -l $ans))) )
+misses=( $( comm -23 <(sort <(print -l $ques)) <(sort <(print -l $ans))) )
+
+integer maxlen=0
+for m in $misses; do  (( $#m > maxlen )) && maxlen=$#m; done
+
+print
+diff -y -1  <(print -l $ans) <(print -l $ques) | grep '|' |
+     while read -r line
+     do #print line: $line xxx
+        parts=( $(sed -r 's/[ \t]+\|[ \t]+/ /' <<<$line) )
+        # printf '%-16s -> %s\n' $parts[1] $parts[2]
+        printf "%-${maxlen}s -> %s\n" $parts[1] $parts[2]
+     done
+
+# diff -y -1  <(sort <(print -l $ques)) <(sort <(print -l $ans))
+# diff -1  <(sort <(print -l $ques)) <(sort <(print -l $ans)) | sed -r '/---/d'
+
+penalty=$(( $#misses * $pensecs. ))
+if   [[ -n $misses ]]
+then print "\nMissed words: $misses"
+     # TODO record misses in file with timestamp
+else print 'No missed words!'
+fi
+
+# print "\nQUES"; sort <(print -l $ques)
+# print "\nANS"; sort <(print -l $ans)
+
+t1=$(date '+%s')
+testtime=$(( t1 - t0 ))
+pentime=$(( testtime + penalty ))
+
+print "\nTest of $#ques words took $testtime seconds."
+
+# print "nchars: $#queschars, nwords: $#ques"
+rawwpm=$(( $#queschars / 5. / testtime * 60 ))
+penwpm=$(( $#queschars / 5. / pentime  * 60 ))
+printf "WPM: %.1f (raw: %.1f)\n" $penwpm $rawwpm
+
+integer ncorrect=$( comm -12 <(sort <(print -l $ques)) <(sort <(print -l $ans)) | wc -l )
+printf "Acc: %.0f%% ($ncorrect/$#ques)\n" $(( $ncorrect. / $#ques * 100 ))
+
+if   [[ -n $misses ]]
+then for w in $misses; do repeats+="$w $w $w $w $w "; done
+     print "\nType these missed words:"
+     print $(print -l $=repeats | shuf) | fold -w80 -s
+     print
+     read  'retake?> '
+fi
