@@ -5,23 +5,59 @@
 # TODO
 # premature end with calcs on return
 # process input args
-# colors, bold
-# keep track of best scores
 # track slow words (timer for each word)
-# env vars to parameterize
+# word sets available by name (english200 etc)
+# distribute dict file, man page
+# fix word list to not have words like according_to
+# deal with apostrophes in word list
+# change name, put word list into git with attribution
+# return a time in seconds (and accuracy in pct?) for looping/scripting
+# if "installation" is missed, re-present "installer" "installed" "installable" etc
+# keep track of high score(s)
+# time each word typed
+# color each word green if typed correctly (or red)
+# audible "ding" at N seconds
 
-dict=~/contrib/dict/3-10k.num
-nwords=20
-poolsize=300
+dict=${TTYP_DICT-~/contrib/dict/3-10k.num}
+nwords=${TTYP_NWORDS-30}
+poolsize=${TTYP_POOLSIZE-500}
 pattern='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)'
-pensecs=1 # penalty seconds
+# pattern='	[eniarltos]+$' # eniarltosudycghpmkbwfzvxqj
+# pattern='	[eniarltosu]+u[eniarltosu]$' # eniarltosudycghpmkbwfzvxqj
+# pattern='.'
+# pattern='[rs]'
+pensecs=${TTYP_PENSECS-1} # penalty seconds
+function shuffle { [[ ! -v TTYP_NOSHUF ]] && shuf <$1 || cat $1 ; }
 
-ques=( $(grep -E $pattern $dict | head -n $poolsize | cut -f3 | shuf | head -n $nwords) )
+autoload -U colors; colors
+
+# Read from stdin. But too messy to do in shell.
+# https://unix.stackexchange.com/questions/762992/bash-check-if-the-standard-input-contains-anything
+# sleep 2
+# if read -t 0 _
+# then
+#     echo "Ready to receive data"
+#     read -r data
+#     echo "Received: $data"
+# fi
+
+if   [[ -n $1 ]]
+then ques=( $(shuffle $1 ) )
+else # ques=( $(grep -E $pattern $dict | grep -E -v "[_']" | head -n $poolsize | cut -f3 | shuf | head -n $nwords) )
+     x=$(grep -E $pattern $dict | grep -E -v "[_']" | head -n $poolsize | cut -f3)
+     # print $x
+     ques=( $( shuffle <(print $x) | head -n $nwords) )
+fi
+
 queschars=$ques
 
 # Show test words wrapped at 80 chars
-print
-fold -w80 -s <<<$ques
+function print_test {
+     print
+     fold -w80 -s <<<$1 | while read -r ln; do print "  $bold_color$ln"; done
+     print -n $reset_color
+}
+print_test "$ques"
 
 print '\nStart typing to begin test, <enter> to end.\n'
 read -sk1 'char1?> '
@@ -35,7 +71,7 @@ typos=(  $( comm -13 <(sort <(print -l $ques)) <(sort <(print -l $ans))) )
 misses=( $( comm -23 <(sort <(print -l $ques)) <(sort <(print -l $ans))) )
 
 integer maxlen=0
-for m in $misses; do  (( $#m > maxlen )) && maxlen=$#m; done
+for m in $typos; do  (( $#m > maxlen )) && maxlen=$#m; done
 
 print
 diff -y -1  <(print -l $ans) <(print -l $ques) | grep '|' |
@@ -51,9 +87,9 @@ diff -y -1  <(print -l $ans) <(print -l $ques) | grep '|' |
 
 penalty=$(( $#misses * $pensecs. ))
 if   [[ -n $misses ]]
-then print "\nMissed words: $misses"
+then print "\nMissed words: $fg[red]$misses$reset_color"
      # TODO record misses in file with timestamp
-else print 'No missed words!'
+else print "$fg_bold[green]PERFECT! No missed words!$reset_color"
 fi
 
 # print "\nQUES"; sort <(print -l $ques)
@@ -75,8 +111,9 @@ printf "Acc: %.0f%% ($ncorrect/$#ques)\n" $(( $ncorrect. / $#ques * 100 ))
 
 if   [[ -n $misses ]]
 then for w in $misses; do repeats+="$w $w $w $w $w "; done
-     print "\nType these missed words:"
-     print $(print -l $=repeats | shuf) | fold -w80 -s
+     print "\nType these missed words (free-form, as many times as you like):"
+     freeform=$( print $(print -l $=repeats | shuf) )
+     print_test "$freeform"
      print
      read  'retake?> '
 fi
