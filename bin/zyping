@@ -1,6 +1,6 @@
 #! /bin/zsh
 
-# zyping
+# ttyping
 
 # TODO
 # premature end with calcs on return
@@ -108,7 +108,9 @@ penwpm=$(( $#queschars / 5. / pentime  * 60 ))
 printf "WPM: %.1f (raw: %.1f)\n" $penwpm $rawwpm
 
 integer ncorrect=$( comm -12 <(sort <(print -l $ques)) <(sort <(print -l $ans)) | wc -l )
-printf "Acc: %.0f%% ($ncorrect/$#ques)\n" $(( $ncorrect. / $#ques * 100 ))
+accuracy=$(( $ncorrect. / $#ques * 100 ))
+# printf "Acc: %.0f%% ($ncorrect/$#ques)\n" $(( $ncorrect. / $#ques * 100 ))
+printf "Acc: %.0f%% ($ncorrect/$#ques)\n" $accuracy
 
 if   [[ -n $misses ]]
 then for w in $misses; do repeats+="$w $w $w $w $w "; done
@@ -118,3 +120,7 @@ then for w in $misses; do repeats+="$w $w $w $w $w "; done
      print
      read  'retake?> '
 fi
+
+# print $penwpm $accuracy >&2
+# ugh getting too ugly to process outside, so just use error code
+exit "$(printf '%d' $penwpm)"

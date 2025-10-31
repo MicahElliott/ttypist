@@ -19,7 +19,7 @@ TTYpist is the simplest possible terminal-based typing tutor/speed test.
 - Retrain on missed words (soon)
 - Repeat test
 - Highly configurable: number of words, pool size, regex patterns, penalties, dictionary
-- Scriptable: returns timing on stderr as input to run in loop
+- Scriptable: returns timing as exit-code (`$?`) for input to run in loop
 - Scriptable: feed a list of words on stdin (as file: `ttypist <(somecmd ...)`
 
 ## Demo
@@ -68,11 +68,10 @@ that I prefer, without errors.
 ### Keybr
 
 ```shell
-acc=() maxtime=60 curtime=0
+acc=() maxtime=60
 for c in t o s u d y c g h p m k b w f z v k x q j
-do   res=( $( TTYP_PATTERN='\t['eniarl$acc']+$'$c'\t['eniarl$acc']+$' ttypist 2>&1 ) )
-     curtime=$res[1]
-     (( curtime < maxtime )) && acc+=$c
+do   TTYP_PATTERN='\t['eniarl$c${(j::)acc}']*'$c'['eniarl$c${(j::)acc}']*$' ttypist
+     (( $? < maxtime )) && acc+=$c
 done
 ```
 
