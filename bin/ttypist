@@ -1,6 +1,6 @@
 #! /bin/zsh
 
-# ttyping
+# ttypist
 
 # TODO
 # premature end with calcs on return
@@ -17,6 +17,7 @@
 # time each word typed
 # color each word green if typed correctly (or red)
 # audible "ding" at N seconds
+# log each session to ~/.ttypisthist.tsv
 
 dict=${TTYP_DICT-~/contrib/dict/3-10k.num}
 nwords=${TTYP_NWORDS-30}
@@ -28,9 +29,12 @@ pattern=${TTYP_PATTERN-.}
 # pattern='.'
 # pattern='[rs]'
 pensecs=${TTYP_PENSECS-1} # penalty seconds
-function shuffle { [[ ! -v TTYP_NOSHUF ]] && shuf <$1 || cat $1 ; }
 
 autoload -U colors; colors
+
+function shuffle { [[ ! -v TTYP_NOSHUF ]] && shuf <$1 || cat $1 ; }
+
+print "$fg[blue]TTYpist typing session$reset_color" # include session number etc
 
 # Read from stdin. But too messy to do in shell.
 # https://unix.stackexchange.com/questions/762992/bash-check-if-the-standard-input-contains-anything
@@ -43,7 +47,7 @@ autoload -U colors; colors
 # fi
 
 if   [[ -n $1 ]]
-then ques=( $(shuffle $1 ) )
+then ques=( $(shuffle $1) )
 else # ques=( $(grep -E $pattern $dict | grep -E -v "[_']" | head -n $poolsize | cut -f3 | shuf | head -n $nwords) )
      x=$(grep -E $pattern $dict | grep -E -v "[_']" | head -n $poolsize | cut -f3)
      # print $x

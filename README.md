@@ -67,18 +67,24 @@ that I prefer, without errors.
 
 ### Keybr
 
+The keybr.com site gets you to practice a small set of words containing only 6
+letters (`e n i a r l`) until you reach 35 WPM, at which point it advances you
+to add the next letter, `t`, and so on. TTYpist can do this too:
+
 ```shell
-acc=() maxtime=60
+acc=() minwpm=35
 for c in t o s u d y c g h p m k b w f z v k x q j
-do   TTYP_PATTERN='\t['eniarl$c${(j::)acc}']*'$c'['eniarl$c${(j::)acc}']*$' ttypist
-     (( $? < maxtime )) && acc+=$c
+do   # Repeat test till sufficienly fast
+     while (( $? < minwpm )); do TTYP_PATTERN='\t['eniarl$c${(j::)acc}']*'$c'['eniarl$c${(j::)acc}']*$' ttypist; done
+     # Then advance to next letter
+     acc+=$c
 done
 ```
 
-### Limit to Top-200 words for speed practice
+### Monkeytype default: limit to Top-200 words for speed practice
 
 ```shell
-TTYP_POOLSIZE=200
+TTYP_POOLSIZE=200 ttypist
 ```
 
 ### British spellings, using your own dictionary
@@ -87,8 +93,22 @@ TTYP_POOLSIZE=200
 
 ### Prose
 
+Don't scramble the words in a poem!
+
 ```shell
 TTYP_NOSHUF=1 ttypist mypoem.txt
+```
+
+Or even better:
+
+```shellsession
+% TTYP_NOSHUF=1 ttypist <(fortune)
+TTYpist typing session
+
+  One small step for man, one giant stumble for mankind.
+
+Start typing to begin test, <enter> to end.
+...
 ```
 
 ## Environment
@@ -99,6 +119,12 @@ TTYP_NOSHUF=1 ttypist mypoem.txt
 - `TTYP_PATTERN` — regex selector (quote it!) for words in test (default `.` means all)
 - `TTYP_DICT` — file to use as dictionary input
 - `TTYP_PENSECS` — time penalty in seconds; miss 3 words -> 3s (default `1`)
+
+## Limitations
+
+There is no per-word timing. It'll take a fancier `read` mechanism.
+
+If you get off by a word (miss a space, etc), accuracy will get very confused.
 
 ## Inspiration
 
