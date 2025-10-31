@@ -22,6 +22,40 @@ Zyping is the simplest possible terminal-based typing tutor/speed test.
 - Scriptable: returns timing on stderr as input to run in loop
 - Scriptable: feed a list of words on stdin (as file: `ttypist <(somecmd ...)`
 
+## Demo
+
+```shellsession
+% ~/proj/zyping/bin/zyping
+
+  being before among whether all all and question name six form someone to real
+  food mind face evidence large big put public has keep think say economic every
+  a often
+
+Start typing to begin test, <enter> to end.
+
+> being before among whether all all and quetion name gix form someone to real food mind face evidence lange big put budlic has keep think say economic every a forme
+
+quetion -> question
+gix     -> six
+lange   -> large
+budlic  -> public
+forme   -> often
+
+Missed words: large often public question six
+
+Test of 30 words took 31 seconds.
+WPM: 54.7 (raw: 63.5)
+Acc: 83% (25/30)
+
+Type these missed words (free-form, as many times as you like):
+
+  often large often often often question six question often public large public
+  six public question question six public six large large public large question
+  six
+
+> often lange often often often quetion six quistion ofret public large publi csix ...
+```
+
 ## Why
 
 This started as a small, fun exercise to see what could be prototyped in a

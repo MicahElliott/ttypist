@@ -21,7 +21,8 @@
 dict=${TTYP_DICT-~/contrib/dict/3-10k.num}
 nwords=${TTYP_NWORDS-30}
 poolsize=${TTYP_POOLSIZE-500}
-pattern='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)'
+# pattern='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)'
+pattern=${TTYP_PATTERN-.}
 # pattern='	[eniarltos]+$' # eniarltosudycghpmkbwfzvxqj
 # pattern='	[eniarltosu]+u[eniarltosu]$' # eniarltosudycghpmkbwfzvxqj
 # pattern='.'
