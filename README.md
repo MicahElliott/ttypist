@@ -6,12 +6,12 @@
     ttypist --count 100 --pattern '(tt|cc|con|tion|ment|able|ject|ould|ight|ment)' --level 3
 ```
 
-Zyping is the simplest possible terminal-based typing tutor/speed test.
+TTYpist is the simplest possible terminal-based typing tutor/speed test.
 
 ## Features
 
 - Simplest possible UI
-- Tiny Zsh script you can change
+- Clean and small Zsh script you can change (but shouldn't need to)
 - Side-by-side formatting of missed words
 - Metrics: accuracy, WPMs (actal and raw), penalties, counts, timings
 - Graceful early quitting
@@ -25,7 +25,7 @@ Zyping is the simplest possible terminal-based typing tutor/speed test.
 ## Demo
 
 ```shellsession
-% ~/proj/zyping/bin/zyping
+% ttypist
 
   being before among whether all all and question name six form someone to real
   food mind face evidence large big put public has keep think say economic every
@@ -60,22 +60,29 @@ Type these missed words (free-form, as many times as you like):
 
 This started as a small, fun exercise to see what could be prototyped in a
 small script and maybe eventally become a clone of [ttyper]. But as it started
-taking shape, it became clear that I could do most of what ttyper does in ways
-that I prefer.
+taking shape, it became clear that it could do most of what ttyper does in ways
+that I prefer, without errors.
 
 ## Recipes
 
-Keybr: `rg '\t[eniarl]+$' 3-10k.num`
-
-Then keep adding to build up to full sequence `eniarl tosudycghpmkbwf
-
-### Top-200
+### Keybr
 
 ```shell
-poolsize=200
+acc=() maxtime=60 curtime=0
+for c in t o s u d y c g h p m k b w f z v k x q j
+do   res=( $( TTYP_PATTERN='\t['eniarl$acc']+$'$c'\t['eniarl$acc']+$' ttypist 2>&1 ) )
+     curtime=$res[1]
+     (( curtime < maxtime )) && acc+=$c
+done
 ```
 
-### British spellings
+### Limit to Top-200 words for speed practice
+
+```shell
+TTYP_POOLSIZE=200
+```
+
+### British spellings, using your own dictionary
 
 `TTYP_DICT=mybrit.txt`
 
@@ -93,7 +100,6 @@ TTYP_NOSHUF=1 ttypist mypoem.txt
 - `TTYP_PATTERN` — regex selector (quote it!) for words in test (default `.` means all)
 - `TTYP_DICT` — file to use as dictionary input
 - `TTYP_PENSECS` — time penalty in seconds; miss 3 words -> 3s (default `1`)
-
 
 ## Inspiration
 
