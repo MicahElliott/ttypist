@@ -5,12 +5,10 @@
 # TODO
 # premature end with calcs on return
 # process input args
-# track slow words (timer for each word)
 # word sets available by name (english200 etc)
 # distribute dict file, man page
 # fix word list to not have words like according_to
 # deal with apostrophes in word list
-# change name, put word list into git with attribution
 # return a time in seconds (and accuracy in pct?) for looping/scripting
 # if "installation" is missed, re-present "installer" "installed" "installable" etc
 # keep track of high score(s)
@@ -18,8 +16,11 @@
 # color each word green if typed correctly (or red)
 # audible "ding" at N seconds
 # log each session to ~/.ttypisthist.tsv
+# repeat last test
+# track slow words (timer for each word)
 
-dict=${TTYP_DICT-~/contrib/dict/3-10k.num}
+# dict=${TTYP_DICT-~/contrib/dict/10k-3.num}
+dict=${TTYP_DICT-10k-3.num}
 nwords=${TTYP_NWORDS-30}
 poolsize=${TTYP_POOLSIZE-500}
 # pattern='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)'

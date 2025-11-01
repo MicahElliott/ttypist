@@ -120,6 +120,16 @@ Start typing to begin test, <enter> to end.
 - `TTYP_DICT` — file to use as dictionary input
 - `TTYP_PENSECS` — time penalty in seconds; miss 3 words -> 3s (default `1`)
 
+## Word list source
+
+I believe my process for generating the provided `10k-3.num` list file was
+taking the 1M-word [BNC
+corpus](https://www.wordfrequency.info/100k_compare.asp) and making a
+rank/frequency/word TSV. It was useful for some keyboard layout analysis. You
+could use any word list and change the script to `cut` any column. At 170 KB,
+I didn't want to distribute bigger lists, but you may want to grab or generate
+for a 50+k list if you want a bigger `TTYP_POOLSIZE`.
+
 ## Limitations
 
 There is no per-word timing. It'll take a fancier `read` mechanism.
