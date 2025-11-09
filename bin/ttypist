@@ -7,22 +7,21 @@
 # process input args
 # word sets available by name (english200 etc)
 # distribute dict file, man page
-# fix word list to not have words like according_to
-# deal with apostrophes in word list
-# return a time in seconds (and accuracy in pct?) for looping/scripting
-# if "installation" is missed, re-present "installer" "installed" "installable" etc
-# keep track of high score(s)
-# time each word typed
-# color each word green if typed correctly (or red)
-# audible "ding" at N seconds
-# log each session to ~/.ttypisthist.tsv
 # repeat last test
+# audible "ding" at N seconds
+# deal with apostrophes in word list
+# if "installation" is missed, re-present "installer" "installed" "installable" etc
+# fix word list to not have words like according_to
+# keep track of high score(s)
+# color each word green if typed correctly (or red)
+# log each session to ~/.ttypisthist.tsv
 # track slow words (timer for each word)
+# spell-check the misses, not for matching but simply presence in dict
 
 # dict=${TTYP_DICT-~/contrib/dict/10k-3.num}
-dict=${TTYP_DICT-10k-3.num}
+dict=${TTYP_DICT-${0:h}/../10k-3.num}
 nwords=${TTYP_NWORDS-30}
-poolsize=${TTYP_POOLSIZE-500}
+poolsize=${TTYP_POOLSIZE-1000}
 # pattern='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)'
 pattern=${TTYP_PATTERN-.}
 # pattern='	[eniarltos]+$' # eniarltosudycghpmkbwfzvxqj
@@ -50,9 +49,10 @@ print "$fg[blue]TTYpist typing session$reset_color" # include session number etc
 if   [[ -n $1 ]]
 then ques=( $(shuffle $1) )
 else # ques=( $(grep -E $pattern $dict | grep -E -v "[_']" | head -n $poolsize | cut -f3 | shuf | head -n $nwords) )
-     x=$(grep -E $pattern $dict | grep -E -v "[_']" | head -n $poolsize | cut -f3)
-     # print $x
-     ques=( $( shuffle <(print $x) | head -n $nwords) )
+     # x=$(grep -E $pattern $dict | grep -E -v "[_']" | head -n $poolsize | cut -f3)
+     pool=$(cut -f3 $dict | head -n $poolsize | grep -E $pattern | grep -E -v "[_'&]" | grep -E '...+')
+     # print $pool
+     ques=( $( shuffle <(print $pool) | head -n $nwords) )
 fi
 
 queschars=$ques
@@ -123,7 +123,12 @@ then for w in $misses; do repeats+="$w $w $w $w $w "; done
      freeform=$( print $(print -l $=repeats | shuf) )
      print_test "$freeform"
      print
-     read  'retake?> '
+     read  'retake?> ' # this is storing the response in the "retake" var
+     pat=$(print -l $retake | sort -u | sed -r 's/ +/|/g')
+     # print -- pat: "$pat"
+     goods=( $(grep -E "($pat)" <<<$ques) )
+     sobads=( $(comm -13 <(print -l $goods | sort -u) <(print -l $=retake | sort -u)) )
+     [[ -n $sobads ]] && print "\nTypos: $fg[red]${(j: :)sobads}$reset_color"
 fi
 
 # print $penwpm $accuracy >&2
