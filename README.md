@@ -3,7 +3,7 @@
 ## Synopsis
 
 ```shell
-    ttypist --count 100 --pattern '(tt|cc|con|tion|ment|able|ject|ould|ight|ment)' --level 3
+    TTYP_NWORDS=100 TTYP_PATTERN='(tt|cc|con|tion|ment|able|ject|ould|ight|ment)' --level 3
 ```
 
 TTYpist is the simplest possible terminal-based typing tutor/speed test.
@@ -63,33 +63,52 @@ small script and maybe eventally become a clone of [ttyper]. But as it started
 taking shape, it became clear that it could do most of what ttyper does in ways
 that I prefer, without errors.
 
+## Typing tips
+
+If you need to backspace more than one character, use `Ctrl-W` to delete the
+whole word.
+
+If you want to practice patterns you've set up as a
+[magic key](https://github.com/Ikcelaks/keyboard_layouts/blob/main/magic_sturdy/magic_sturdy.md),
+capture them in a regex and use like:
+
+```shellsession
+TTYP_PATTERN='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)' ~/proj/zyping/bin/ttypist
+```
+
 ## Recipes
 
 ### Keybr
 
-The keybr.com site gets you to practice a small set of words containing only 6
+The [keybr.com] site gets you to practice a small set of words containing only 6
 letters (`e n i a r l`) until you reach 35 WPM, at which point it advances you
-to add the next letter, `t`, and so on. TTYpist can do this too:
+to add the next letter, `t`, and so on. TTYpist can do this too (but much more
+flexibly and permits magic keys):
 
-```shell
+```shellsession
 acc=() minwpm=35
 for c in t o s u d y c g h p m k b w f z v k x q j
 do   # Repeat test till sufficienly fast
-     while (( $? < minwpm )); do TTYP_PATTERN='\t['eniarl$c${(j::)acc}']*'$c'['eniarl$c${(j::)acc}']*$' ttypist; done
+     while (( $? < minwpm )); do TTYP_PATTERN='^['eniarl$c${(j::)acc}']*'$c'['eniarl$c${(j::)acc}']*$' ttypist; done
      # Then advance to next letter
      acc+=$c
 done
 ```
 
+For a better challenge, set `minwpm=60` and `TTYP_POOLSIZE=10000`, and even
+`TTYP_PENSECS=3` (to force stricter accuracy).
+
 ### Monkeytype default: limit to Top-200 words for speed practice
 
-```shell
-TTYP_POOLSIZE=200 ttypist
+```shellsession
+TTYP_POOLSIZE=200 TTYP_NWORDS=60 ttypist
 ```
 
 ### British spellings, using your own dictionary
 
-`TTYP_DICT=mybrit.txt`
+```shellsession
+TTYP_DICT=mybrit.txt ttypist
+```
 
 ### Prose
 
@@ -110,6 +129,11 @@ TTYpist typing session
 Start typing to begin test, <enter> to end.
 ...
 ```
+
+### Most efficient list of trigrams
+
+I find this to be a fascinating [selection of practice
+trigrams](https://www.reddit.com/r/typing/comments/172umsd/896_trigrams_in_200_words_a_new_selection_of/).
 
 ## Environment
 
@@ -134,11 +158,13 @@ for a 50+k list if you want a bigger `TTYP_POOLSIZE`.
 
 There is no per-word timing. It'll take a fancier `read` mechanism.
 
-If you get off by a word (miss a space, etc), accuracy will get very confused.
+A test is based on a set of words, not on a timer. So there is no 1-minute
+test. If you're aiming for 60 wpm and want a 1-minute test, use
+`TTYP_NWORDS=60` to approximate it.
 
 ## Inspiration
 
-- [monkeytype]()
+- [monkeytype](https://www.monkeytype.com/)
 
 - [keybr](https://www.keybr.com/)
 
