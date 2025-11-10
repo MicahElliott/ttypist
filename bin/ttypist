@@ -17,6 +17,8 @@
 # log each session to ~/.ttypisthist.tsv
 # track slow words (timer for each word)
 # spell-check the misses, not for matching but simply presence in dict
+# "difficulty" level: a freq band; level=5 -> rank 40k-50k (TTYP_POOLMIN=40000 TTYP_POOLSIZE=10000)
+# track correctness history with ~/local/share/ttypist/history.tsv (timestamp/word/1-0)
 
 # dict=${TTYP_DICT-~/contrib/dict/10k-3.num}
 dict=${TTYP_DICT-${0:h}/../10k-3.num}
@@ -24,10 +26,6 @@ nwords=${TTYP_NWORDS-30}
 poolsize=${TTYP_POOLSIZE-1000}
 # pattern='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)'
 pattern=${TTYP_PATTERN-.}
-# pattern='	[eniarltos]+$' # eniarltosudycghpmkbwfzvxqj
-# pattern='	[eniarltosu]+u[eniarltosu]$' # eniarltosudycghpmkbwfzvxqj
-# pattern='.'
-# pattern='[rs]'
 pensecs=${TTYP_PENSECS-1} # penalty seconds
 
 autoload -U colors; colors
@@ -35,6 +33,8 @@ autoload -U colors; colors
 function shuffle { [[ ! -v TTYP_NOSHUF ]] && shuf <$1 || cat $1 ; }
 
 print "$fg[blue]TTYpist typing session$reset_color" # include session number etc
+
+print "NWORDS | POOLSIZE | DICT | PATTERN :: $nwords | $poolsize | $dict | $pattern"
 
 # Read from stdin. But too messy to do in shell.
 # https://unix.stackexchange.com/questions/762992/bash-check-if-the-standard-input-contains-anything
@@ -48,10 +48,11 @@ print "$fg[blue]TTYpist typing session$reset_color" # include session number etc
 
 if   [[ -n $1 ]]
 then ques=( $(shuffle $1) )
-else # ques=( $(grep -E $pattern $dict | grep -E -v "[_']" | head -n $poolsize | cut -f3 | shuf | head -n $nwords) )
-     # x=$(grep -E $pattern $dict | grep -E -v "[_']" | head -n $poolsize | cut -f3)
+else
+     # pool=$(cut -f3 $dict | head -n $poolsize | grep -E $pattern | grep -E -v "[_'&]" | grep -E '...+')
+     # Safe to cut field 2+ on single-column file; just grabs first field!
      pool=$(cut -f3 $dict | head -n $poolsize | grep -E $pattern | grep -E -v "[_'&]" | grep -E '...+')
-     # print $pool
+     # print pool: $pool
      ques=( $( shuffle <(print $pool) | head -n $nwords) )
 fi
 
@@ -95,7 +96,7 @@ penalty=$(( $#misses * $pensecs. ))
 if   [[ -n $misses ]]
 then print "\nMissed words: $fg[red]$misses$reset_color"
      # TODO record misses in file with timestamp
-else print "$fg_bold[green]PERFECT! No missed words!$reset_color"
+else print "$fg_bold[green]PERFECT! No missed words! (go faster)$reset_color"
 fi
 
 # print "\nQUES"; sort <(print -l $ques)
