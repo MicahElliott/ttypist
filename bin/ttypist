@@ -3,22 +3,24 @@
 # ttypist
 
 # TODO
+# log each session to ~/.ttypisthist.tsv
 # premature end with calcs on return
 # process input args
 # word sets available by name (english200 etc)
 # distribute dict file, man page
-# repeat last test
-# audible "ding" at N seconds
 # deal with apostrophes in word list
 # if "installation" is missed, re-present "installer" "installed" "installable" etc
 # fix word list to not have words like according_to
 # keep track of high score(s)
 # color each word green if typed correctly (or red)
-# log each session to ~/.ttypisthist.tsv
 # track slow words (timer for each word)
 # spell-check the misses, not for matching but simply presence in dict
+# audible "ding" at N seconds
 # "difficulty" level: a freq band; level=5 -> rank 40k-50k (TTYP_POOLMIN=40000 TTYP_POOLSIZE=10000)
 # track correctness history with ~/local/share/ttypist/history.tsv (timestamp/word/1-0)
+# repeat last test
+# word-length range: only words between 8-20 chars
+# letter build-up: rr rrn rnr nnr, rtn trn rrt ntr, rst srt trns stnr rnts, rats tart rsa ratn raat # < /dev/urandom tr -dc stnr | head -c "$((RANDOM % 8 + 1))"
 
 # dict=${TTYP_DICT-~/contrib/dict/10k-3.num}
 dict=${TTYP_DICT-${0:h}/../10k-3.num}
@@ -26,6 +28,8 @@ nwords=${TTYP_NWORDS-30}
 poolsize=${TTYP_POOLSIZE-1000}
 # pattern='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)'
 pattern=${TTYP_PATTERN-.}
+minwpm=${TTYP_MINWPM-50}
+minacc=${TTYP_MINACC-95}
 pensecs=${TTYP_PENSECS-1} # penalty seconds
 
 autoload -U colors; colors
@@ -34,17 +38,7 @@ function shuffle { [[ ! -v TTYP_NOSHUF ]] && shuf <$1 || cat $1 ; }
 
 print "$fg[blue]TTYpist typing session$reset_color" # include session number etc
 
-print "NWORDS | POOLSIZE | DICT | PATTERN :: $nwords | $poolsize | $dict | $pattern"
-
-# Read from stdin. But too messy to do in shell.
-# https://unix.stackexchange.com/questions/762992/bash-check-if-the-standard-input-contains-anything
-# sleep 2
-# if read -t 0 _
-# then
-#     echo "Ready to receive data"
-#     read -r data
-#     echo "Received: $data"
-# fi
+print "NWORDS: $nwords | POOLSIZE: $poolsize | MINWPM: $minwpm | DICT: $dict | PATTERN: $pattern"
 
 if   [[ -n $1 ]]
 then ques=( $(shuffle $1) )
@@ -89,18 +83,12 @@ diff -y -1  <(print -l $ans) <(print -l $ques) | grep '|' |
         printf "%-${maxlen}s -> %s\n" $parts[1] $parts[2]
      done
 
-# diff -y -1  <(sort <(print -l $ques)) <(sort <(print -l $ans))
-# diff -1  <(sort <(print -l $ques)) <(sort <(print -l $ans)) | sed -r '/---/d'
-
 penalty=$(( $#misses * $pensecs. ))
 if   [[ -n $misses ]]
 then print "\nMissed words: $fg[red]$misses$reset_color"
      # TODO record misses in file with timestamp
 else print "$fg_bold[green]PERFECT! No missed words! (go faster)$reset_color"
 fi
-
-# print "\nQUES"; sort <(print -l $ques)
-# print "\nANS"; sort <(print -l $ans)
 
 t1=$(date '+%s')
 testtime=$(( t1 - t0 ))
@@ -111,16 +99,17 @@ print "\nTest of $#ques words took $testtime seconds."
 # print "nchars: $#queschars, nwords: $#ques"
 rawwpm=$(( $#queschars / 5. / testtime * 60 ))
 penwpm=$(( $#queschars / 5. / pentime  * 60 ))
-printf "WPM: %.1f (raw: %.1f)\n" $penwpm $rawwpm
+wpmcolor=red; (( minwpm < penwpm  )) && wpmcolor=green
+printf "WPM: $fg_bold[$wpmcolor]%.1f$reset_color (raw: %.1f)\n" $penwpm $rawwpm
 
 integer ncorrect=$( comm -12 <(sort <(print -l $ques)) <(sort <(print -l $ans)) | wc -l )
 accuracy=$(( $ncorrect. / $#ques * 100 ))
-# printf "Acc: %.0f%% ($ncorrect/$#ques)\n" $(( $ncorrect. / $#ques * 100 ))
-printf "Acc: %.0f%% ($ncorrect/$#ques)\n" $accuracy
+acccolor=red; (( minacc < accuracy )) && acccolor=green
+printf "Acc: $fg_bold[$acccolor]%.0f%%$reset_color ($ncorrect/$#ques)\n" $accuracy
 
 if   [[ -n $misses ]]
 then for w in $misses; do repeats+="$w $w $w $w $w "; done
-     print "\nType these missed words (free-form, as many times as you like):"
+     print "\nType these missed words (untimed free-form, as many times as you like):"
      freeform=$( print $(print -l $=repeats | shuf) )
      print_test "$freeform"
      print
@@ -132,6 +121,5 @@ then for w in $misses; do repeats+="$w $w $w $w $w "; done
      [[ -n $sobads ]] && print "\nTypos: $fg[red]${(j: :)sobads}$reset_color"
 fi
 
-# print $penwpm $accuracy >&2
-# ugh getting too ugly to process outside, so just use error code
-exit "$(printf '%d' $penwpm)"
+# Exit with WPM as fail status if speed too slow
+(( penwpm < minwpm )) && exit "$(printf '%d' $penwpm)" || exit 0

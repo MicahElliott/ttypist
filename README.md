@@ -86,12 +86,11 @@ to add the next letter, `t`, and so on. TTYpist can do this too (but much more
 flexibly and permits magic keys):
 
 ```shellsession
-acc=() minwpm=35
+acc=()
 for c in t o s u d y c g h p m k b w f z v k x q j
-do   # Repeat test till sufficienly fast
-     while (( $? < minwpm )); do TTYP_PATTERN='^['eniarl$c${(j::)acc}']*'$c'['eniarl$c${(j::)acc}']*$' ttypist; done
-     # Then advance to next letter
-     acc+=$c
+do  # Repeat test till sufficienly fast
+    while ! TTYP_POOLSIZE=10000 TTYP_PATTERN='^['eniarl$c${(j::)acc}']*'$c'['eniarl$c${(j::)acc}']*$' ttypist; do : ; done
+    acc+=$c
 done
 ```
 
@@ -102,6 +101,13 @@ For a better challenge, set `minwpm=60` and `TTYP_POOLSIZE=10000`, and even
 
 ```shellsession
 TTYP_POOLSIZE=200 TTYP_NWORDS=60 ttypist
+```
+
+### Pomodoro (10-minute)
+
+```shellsession
+tend=$(date -d '+10 minutes' +%s)
+while (( $(date +%s) < tend )); do ttypist; done
 ```
 
 ### British spellings, using your own dictionary
@@ -143,6 +149,8 @@ trigrams](https://www.reddit.com/r/typing/comments/172umsd/896_trigrams_in_200_w
 - `TTYP_PATTERN` — regex selector (quote it!) for words in test (default `.` means all)
 - `TTYP_DICT` — file to use as dictionary input
 - `TTYP_PENSECS` — time penalty in seconds; miss 3 words -> 3s (default `1`)
+- `TTYP_MINWPM` — minimum WPM to complete for successful exit (default `50`)
+- `TTYP_MINACC` — minimum accuracy to complete (default `95`)
 
 ## Word list source
 
