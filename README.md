@@ -139,7 +139,7 @@ Start typing to begin test, <enter> to end.
 ### Histogram of missed words
 
 ```shellsession
-rg '\tfail' ~/.local/share/ttypist/ttypist.log | cut -f1 | sort | uniq -c
+rg '\tfail' ~/.local/share/ttypist/ttypist-words.log | cut -f1 | sort | uniq -c | sort -nr | head -20
 ```
 
 ### Most efficient list of trigrams
@@ -157,6 +157,11 @@ trigrams](https://www.reddit.com/r/typing/comments/172umsd/896_trigrams_in_200_w
 - `TTYP_PENSECS` — time penalty in seconds; miss 3 words -> 3s (default `1`)
 - `TTYP_MINWPM` — minimum WPM to complete for successful exit (default `50`)
 - `TTYP_MINACC` — minimum accuracy to complete (default `95`)
+
+Sessions are logged by default to
+`~/.local/share/ttypist/ttypist-sessions.log`, word stats to
+`~/.local/share/ttypist/ttypist-words.log`. These can be used to see
+improvements over time, and identify words that need extra practice.
 
 ## Word list source
 

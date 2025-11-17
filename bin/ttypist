@@ -1,6 +1,6 @@
 #! /bin/zsh
 
-# ttypist
+# ttypist — the simplest possible terminal-based typing tutor/speed test
 
 # TODO
 # log word stats to ~/.ttypisthist-words.log
@@ -36,6 +36,7 @@ pensecs=${TTYP_PENSECS-1} # penalty seconds
 
 logdir=${XDG_DATA_HOME-~/.local/share}/ttypist
 logwords=$logdir/ttypist-words.log
+logsessions=$logdir/ttypist-sessions.log
 if [[ ! -f $logdir ]]
 then print "Creating new logging location: $logwords"
      mkdir -p $logdir
@@ -48,6 +49,7 @@ function shuffle { [[ ! -v TTYP_NOSHUF ]] && shuf <$1 || cat $1 ; }
 print "$fg[blue]TTYpist typing session$reset_color" # include session number etc
 print "NWORDS: $nwords | POOLSIZE: $poolsize | MINWPM: $minwpm | DICT: $dict | PATTERN: $pattern"
 
+# Select words randomly
 if   [[ -n $1 ]]
 then ques=( $(shuffle $1) )
 else # Safe to cut field 2+ on single-column file; just grabs first field!
@@ -84,9 +86,7 @@ for m in $typos; do (( $#m > maxlen )) && maxlen=$#m; done
 print
 diff -y -1  <(print -l $ans) <(print -l $ques) | grep '|' |
      while read -r line
-     do #print line: $line xxx
-        parts=( $(sed -r 's/[ \t]+\|[ \t]+/ /' <<<$line) )
-        # printf '%-16s -> %s\n' $parts[1] $parts[2]
+     do parts=( $(sed -r 's/[ \t]+\|[ \t]+/ /' <<<$line) )
         printf "%-${maxlen}s -> %s\n" $parts[1] $parts[2]
      done
 
@@ -109,7 +109,6 @@ pentime=$(( testtime + penalty ))
 
 print "\nTest of $#ques words took $testtime seconds."
 
-# print "nchars: $#queschars, nwords: $#ques"
 rawwpm=$(( $#queschars / 5. / testtime * 60 ))
 penwpm=$(( $#queschars / 5. / pentime  * 60 ))
 wpmcolor=red; (( minwpm < penwpm  )) && wpmcolor=green
@@ -119,6 +118,10 @@ integer ncorrect=$( comm -12 <(sort <(print -l $ques)) <(sort <(print -l $ans)) 
 accuracy=$(( $ncorrect. / $#ques * 100 ))
 acccolor=red; (( minacc < accuracy )) && acccolor=green
 printf "Acc: $fg_bold[$acccolor]%.0f%%$reset_color ($ncorrect/$#ques)\n" $accuracy
+
+# Log session details
+# print "$t0\t$penwpm\t$accuracy\t$nwords" >> $logsessions
+printf "%d\t%.1f\t%.1f\t%d\n" $t0 $penwpm $accuracy $nwords >> $logsessions
 
 if   [[ -n $misses ]]
 then for w in $misses; do repeats+="$w $w $w $w $w "; done
