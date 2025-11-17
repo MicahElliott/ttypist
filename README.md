@@ -13,7 +13,7 @@ TTYpist is the simplest possible terminal-based typing tutor/speed test.
 - Simplest possible UI
 - Clean and small Zsh script you can change (but shouldn't need to)
 - Side-by-side formatting of missed words
-- Metrics: accuracy, WPMs (actal and raw), penalties, counts, timings
+- Metrics: accuracy, WPMs (actal and raw), penalties, counts, timings, sessions (saved as history)
 - Graceful early quitting
 - Sophisticated regex-based training set selection
 - Retrain on missed words (soon)
@@ -134,6 +134,12 @@ TTYpist typing session
 
 Start typing to begin test, <enter> to end.
 ...
+```
+
+### Histogram of missed words
+
+```shellsession
+rg '\tfail' ~/.local/share/ttypist/ttypist.log | cut -f1 | sort | uniq -c
 ```
 
 ### Most efficient list of trigrams

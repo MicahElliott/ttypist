@@ -3,7 +3,9 @@
 # ttypist
 
 # TODO
-# log each session to ~/.ttypisthist.tsv
+# log word stats to ~/.ttypisthist-words.log
+# log each session to ~/ttypist-sessions.log
+# detect new speed record
 # premature end with calcs on return
 # process input args
 # word sets available by name (english200 etc)
@@ -32,21 +34,24 @@ minwpm=${TTYP_MINWPM-50}
 minacc=${TTYP_MINACC-95}
 pensecs=${TTYP_PENSECS-1} # penalty seconds
 
+logdir=${XDG_DATA_HOME-~/.local/share}/ttypist
+logwords=$logdir/ttypist-words.log
+if [[ ! -f $logdir ]]
+then print "Creating new logging location: $logwords"
+     mkdir -p $logdir
+fi
+
 autoload -U colors; colors
 
 function shuffle { [[ ! -v TTYP_NOSHUF ]] && shuf <$1 || cat $1 ; }
 
 print "$fg[blue]TTYpist typing session$reset_color" # include session number etc
-
 print "NWORDS: $nwords | POOLSIZE: $poolsize | MINWPM: $minwpm | DICT: $dict | PATTERN: $pattern"
 
 if   [[ -n $1 ]]
 then ques=( $(shuffle $1) )
-else
-     # pool=$(cut -f3 $dict | head -n $poolsize | grep -E $pattern | grep -E -v "[_'&]" | grep -E '...+')
-     # Safe to cut field 2+ on single-column file; just grabs first field!
+else # Safe to cut field 2+ on single-column file; just grabs first field!
      pool=$(cut -f3 $dict | head -n $poolsize | grep -E $pattern | grep -E -v "[_'&]" | grep -E '...+')
-     # print pool: $pool
      ques=( $( shuffle <(print $pool) | head -n $nwords) )
 fi
 
@@ -64,16 +69,18 @@ print '\nStart typing to begin test, <enter> to end.\n'
 read -sk1 'char1?> '
 print -n "$char1"
 
-integer t0=$(date '+%s')
+integer t0; t0=$(date '+%s') # separating to appease shellcheck
 
 read && ans=( $char1$=REPLY )
 
 typos=(  $( comm -13 <(sort <(print -l $ques)) <(sort <(print -l $ans))) )
 misses=( $( comm -23 <(sort <(print -l $ques)) <(sort <(print -l $ans))) )
+hits=(   $( comm -12 <(sort <(print -l $ques)) <(sort <(print -l $ans))) )
 
 integer maxlen=0
-for m in $typos; do  (( $#m > maxlen )) && maxlen=$#m; done
+for m in $typos; do (( $#m > maxlen )) && maxlen=$#m; done
 
+# Show missed words in vertial list
 print
 diff -y -1  <(print -l $ans) <(print -l $ques) | grep '|' |
      while read -r line
@@ -83,12 +90,18 @@ diff -y -1  <(print -l $ans) <(print -l $ques) | grep '|' |
         printf "%-${maxlen}s -> %s\n" $parts[1] $parts[2]
      done
 
+# Show missed words as short red list
 penalty=$(( $#misses * $pensecs. ))
 if   [[ -n $misses ]]
 then print "\nMissed words: $fg[red]$misses$reset_color"
      # TODO record misses in file with timestamp
 else print "$fg_bold[green]PERFECT! No missed words! (go faster)$reset_color"
 fi
+
+# Log missed words for future stats
+# TODO when becomes possible, log time taken
+for m in $misses; do print "$m\t$t0\tfail" >>$logwords; done
+for h in $hits;   do print "$h\t$t0\tpass" >>$logwords; done
 
 t1=$(date '+%s')
 testtime=$(( t1 - t0 ))
@@ -118,7 +131,10 @@ then for w in $misses; do repeats+="$w $w $w $w $w "; done
      # print -- pat: "$pat"
      goods=( $(grep -E "($pat)" <<<$ques) )
      sobads=( $(comm -13 <(print -l $goods | sort -u) <(print -l $=retake | sort -u)) )
-     [[ -n $sobads ]] && print "\nTypos: $fg[red]${(j: :)sobads}$reset_color"
+     if   [[ -n $sobads ]]
+     then print "\nTypos: $fg[red]${(j: :)sobads}$reset_color"
+     else print "\n$fg[green]NICE!$reset_color"
+     fi
 fi
 
 # Exit with WPM as fail status if speed too slow
