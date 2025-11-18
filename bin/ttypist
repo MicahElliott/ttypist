@@ -3,8 +3,6 @@
 # ttypist — the simplest possible terminal-based typing tutor/speed test
 
 # TODO
-# log word stats to ~/.ttypisthist-words.log
-# log each session to ~/ttypist-sessions.log
 # detect new speed record
 # premature end with calcs on return
 # process input args
@@ -34,10 +32,11 @@ minwpm=${TTYP_MINWPM-50}
 minacc=${TTYP_MINACC-95}
 pensecs=${TTYP_PENSECS-1} # penalty seconds
 
+# Set up logging
 logdir=${XDG_DATA_HOME-~/.local/share}/ttypist
 logwords=$logdir/ttypist-words.log
 logsessions=$logdir/ttypist-sessions.log
-if [[ ! -f $logdir ]]
+if [[ ! -d $logdir ]]
 then print "Creating new logging location: $logwords"
      mkdir -p $logdir
 fi
@@ -56,7 +55,6 @@ else # Safe to cut field 2+ on single-column file; just grabs first field!
      pool=$(cut -f3 $dict | head -n $poolsize | grep -E $pattern | grep -E -v "[_'&]" | grep -E '...+')
      ques=( $( shuffle <(print $pool) | head -n $nwords) )
 fi
-
 queschars=$ques
 
 # Show test words wrapped at 80 chars
@@ -67,20 +65,18 @@ function print_test {
 }
 print_test "$ques"
 
+# Start typing test
 print '\nStart typing to begin test, <enter> to end.\n'
 read -sk1 'char1?> '
 print -n "$char1"
-
 integer t0; t0=$(date '+%s') # separating to appease shellcheck
-
 read && ans=( $char1$=REPLY )
 
+# Collect results
 typos=(  $( comm -13 <(sort <(print -l $ques)) <(sort <(print -l $ans))) )
 misses=( $( comm -23 <(sort <(print -l $ques)) <(sort <(print -l $ans))) )
 hits=(   $( comm -12 <(sort <(print -l $ques)) <(sort <(print -l $ans))) )
-
-integer maxlen=0
-for m in $typos; do (( $#m > maxlen )) && maxlen=$#m; done
+integer maxlen=0; for m in $typos; do (( $#m > maxlen )) && maxlen=$#m; done
 
 # Show missed words in vertial list
 print
@@ -103,26 +99,26 @@ fi
 for m in $misses; do print "$m\t$t0\tfail" >>$logwords; done
 for h in $hits;   do print "$h\t$t0\tpass" >>$logwords; done
 
+# Finish timings
 t1=$(date '+%s')
 testtime=$(( t1 - t0 ))
 pentime=$(( testtime + penalty ))
-
 print "\nTest of $#ques words took $testtime seconds."
 
+# Print summary stats
 rawwpm=$(( $#queschars / 5. / testtime * 60 ))
 penwpm=$(( $#queschars / 5. / pentime  * 60 ))
 wpmcolor=red; (( minwpm < penwpm  )) && wpmcolor=green
-printf "WPM: $fg_bold[$wpmcolor]%.1f$reset_color (raw: %.1f)\n" $penwpm $rawwpm
-
 integer ncorrect=$( comm -12 <(sort <(print -l $ques)) <(sort <(print -l $ans)) | wc -l )
 accuracy=$(( $ncorrect. / $#ques * 100 ))
 acccolor=red; (( minacc < accuracy )) && acccolor=green
+printf "WPM: $fg_bold[$wpmcolor]%.1f$reset_color (raw: %.1f)\n" $penwpm $rawwpm
 printf "Acc: $fg_bold[$acccolor]%.0f%%$reset_color ($ncorrect/$#ques)\n" $accuracy
 
-# Log session details
-# print "$t0\t$penwpm\t$accuracy\t$nwords" >> $logsessions
+# Log session details to tracking files
 printf "%d\t%.1f\t%.1f\t%d\n" $t0 $penwpm $accuracy $nwords >> $logsessions
 
+# Do missed words practice round
 if   [[ -n $misses ]]
 then for w in $misses; do repeats+="$w $w $w $w $w "; done
      print "\nType these missed words (untimed free-form, as many times as you like):"

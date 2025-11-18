@@ -136,10 +136,25 @@ Start typing to begin test, <enter> to end.
 ...
 ```
 
-### Histogram of missed words
+### Identify hardest words
 
 ```shellsession
 rg '\tfail' ~/.local/share/ttypist/ttypist-words.log | cut -f1 | sort | uniq -c | sort -nr | head -20
+```
+
+### Plot of accuracy over time
+
+Install something like [asciigraph](https://github.com/guptarohit/asciigraph)
+for terminal plotting. (There are many other CLIs that can also do this.)
+
+```shellsession
+% cut -f2 ~/.local/share/ttypist/ttypist-sessions.log | asciigraph -h 5
+ 67.27 ┤       ╭╮    ╭─
+ 63.61 ┤       ││   ╭╯
+ 59.95 ┤  ╭╮   ││ ╭╮│
+ 56.29 ┤╭╮│╰─╮╭╯│ │╰╯
+ 52.62 ┼╯╰╯  ╰╯ │ │
+ 48.96 ┤        ╰─╯
 ```
 
 ### Most efficient list of trigrams
