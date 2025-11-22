@@ -3,7 +3,7 @@
 # ttypist — the simplest possible terminal-based typing tutor/speed test
 
 # TODO
-# detect new speed record
+# change poolsize to poolband (200-1000) for true difficulty leveling
 # premature end with calcs on return
 # process input args
 # word sets available by name (english200 etc)
@@ -11,13 +11,10 @@
 # deal with apostrophes in word list
 # if "installation" is missed, re-present "installer" "installed" "installable" etc
 # fix word list to not have words like according_to
-# keep track of high score(s)
 # color each word green if typed correctly (or red)
 # track slow words (timer for each word)
-# spell-check the misses, not for matching but simply presence in dict
 # audible "ding" at N seconds
 # "difficulty" level: a freq band; level=5 -> rank 40k-50k (TTYP_POOLMIN=40000 TTYP_POOLSIZE=10000)
-# track correctness history with ~/local/share/ttypist/history.tsv (timestamp/word/1-0)
 # repeat last test
 # word-length range: only words between 8-20 chars
 # letter build-up: rr rrn rnr nnr, rtn trn rrt ntr, rst srt trns stnr rnts, rats tart rsa ratn raat # < /dev/urandom tr -dc stnr | head -c "$((RANDOM % 8 + 1))"
@@ -78,19 +75,18 @@ misses=( $( comm -23 <(sort <(print -l $ques)) <(sort <(print -l $ans))) )
 hits=(   $( comm -12 <(sort <(print -l $ques)) <(sort <(print -l $ans))) )
 integer maxlen=0; for m in $typos; do (( $#m > maxlen )) && maxlen=$#m; done
 
-# Show missed words in vertial list
+# Show missed words in vertial list (in red)
 print
 diff -y -1  <(print -l $ans) <(print -l $ques) | grep '|' |
      while read -r line
      do parts=( $(sed -r 's/[ \t]+\|[ \t]+/ /' <<<$line) )
-        printf "%-${maxlen}s -> %s\n" $parts[1] $parts[2]
+        printf "$fg[red]%-${maxlen}s$reset_color -> %s\n" $parts[1] $parts[2]
      done
 
-# Show missed words as short red list
+# Show missed words as short red list (disabled since vertical list probably sufficient)
 penalty=$(( $#misses * $pensecs. ))
 if   [[ -n $misses ]]
-then print "\nMissed words: $fg[red]$misses$reset_color"
-     # TODO record misses in file with timestamp
+then : print "\nMissed words: $fg[red]$misses$reset_color"
 else print "$fg_bold[green]PERFECT! No missed words! (go faster)$reset_color"
 fi
 
@@ -111,9 +107,15 @@ penwpm=$(( $#queschars / 5. / pentime  * 60 ))
 wpmcolor=red; (( minwpm < penwpm  )) && wpmcolor=green
 integer ncorrect=$( comm -12 <(sort <(print -l $ques)) <(sort <(print -l $ans)) | wc -l )
 accuracy=$(( $ncorrect. / $#ques * 100 ))
-acccolor=red; (( minacc < accuracy )) && acccolor=green
+acccolor=red; (( minacc <= accuracy )) && acccolor=green
 printf "WPM: $fg_bold[$wpmcolor]%.1f$reset_color (raw: %.1f)\n" $penwpm $rawwpm
 printf "Acc: $fg_bold[$acccolor]%.0f%%$reset_color ($ncorrect/$#ques)\n" $accuracy
+
+# Get previous high score
+integer prevhi=$(grep "	$nwords$" $logsessions |cut -f2 | sort -n | tail -1)
+if   (( prevhi < penwpm ))
+then print "$fg_bold[blue]Congrats! New high score!!$reset_color"
+fi
 
 # Log session details to tracking files
 printf "%d\t%.1f\t%.1f\t%d\n" $t0 $penwpm $accuracy $nwords >> $logsessions
