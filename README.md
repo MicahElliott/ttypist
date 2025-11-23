@@ -3,24 +3,26 @@
 ## Synopsis
 
 ```shell
-    TTYP_NWORDS=100 TTYP_PATTERN='(tt|cc|con|tion|ment|able|ject|ould|ight|ment)' --level 3
+    TTYP_NWORDS=100 TTYP_PATTERN='(tion|ment|able|ject|ould|ight|ment)' ttypist
 ```
 
-TTYpist is the simplest possible terminal-based typing tutor/speed test.
+TTYpist is the simplest possible terminal-based typing tutor/speed test, which
+can be scripted around for a plethora of custom features.
 
 ## Features
 
 - Simplest possible UI
 - Clean and small Zsh script you can change (but shouldn't need to)
-- Side-by-side formatting of missed words
+- Clear side-by-side formatting of missed words
 - Metrics: accuracy, WPMs (actal and raw), penalties, counts, timings, sessions (saved as history)
 - Graceful early quitting
 - Sophisticated regex-based training set selection
-- Retrain on missed words (soon)
-- Repeat test
+- Retrain on missed words (custom)
+- Repeat test (custom)
 - Highly configurable: number of words, pool size, regex patterns, penalties, dictionary
 - Scriptable: returns timing as exit-code (`$?`) for input to run in loop
 - Scriptable: feed a list of words on stdin (as file: `ttypist <(somecmd ...)`
+- Emulations: Keybr, Build-up, randomized tests
 
 ## Demo
 
@@ -40,8 +42,6 @@ gix     -> six
 lange   -> large
 budlic  -> public
 forme   -> often
-
-Missed words: large often public question six
 
 Test of 30 words took 31 seconds.
 WPM: 54.7 (raw: 63.5)
@@ -68,14 +68,6 @@ that I prefer, without errors.
 If you need to backspace more than one character, use `Ctrl-W` to delete the
 whole word.
 
-If you want to practice patterns you've set up as a
-[magic key](https://github.com/Ikcelaks/keyboard_layouts/blob/main/magic_sturdy/magic_sturdy.md),
-capture them in a regex and use like:
-
-```shellsession
-TTYP_PATTERN='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)' ~/proj/zyping/bin/ttypist
-```
-
 ## Recipes
 
 ### Keybr
@@ -86,21 +78,29 @@ to add the next letter, `t`, and so on. TTYpist can do this too (but much more
 flexibly and permits magic keys):
 
 ```shellsession
-acc=()
+accum=()
 for c in t o s u d y c g h p m k b w f z v k x q j
 do  # Repeat test till sufficienly fast
-    while ! TTYP_POOLSIZE=10000 TTYP_PATTERN='^['eniarl$c${(j::)acc}']*'$c'['eniarl$c${(j::)acc}']*$' ttypist; do : ; done
-    acc+=$c
+    while ! TTYP_POOLBAND=10000 TTYP_PATTERN='^['eniarl$c${(j::)accum}']*'$c'['eniarl$c${(j::)accum}']*$' ttypist; do : ; done
+    accum+=$c
 done
 ```
 
-For a better challenge, set `minwpm=60` and `TTYP_POOLSIZE=10000`, and even
+For a better challenge, set `minwpm=60` and `TTYP_POOLBAND=10000`, and even
 `TTYP_PENSECS=3` (to force stricter accuracy).
+
+### Build-up: Increase difficulty in sequence of sessions
+
+```shellsession
+for level in 1 100 200 300 400 500
+do while ! TTYP_POOLBAND=$level-$((level+100)) ttypist; do print 'TOO SLOW'; done
+done
+```
 
 ### Monkeytype default: limit to Top-200 words for speed practice
 
 ```shellsession
-TTYP_POOLSIZE=200 TTYP_NWORDS=60 ttypist
+TTYP_POOLBAND=200 TTYP_NWORDS=60 ttypist
 ```
 
 ### Pomodoro (10-minute)
@@ -124,7 +124,7 @@ Don't scramble the words in a poem!
 TTYP_NOSHUF=1 ttypist mypoem.txt
 ```
 
-Or even better:
+Or even more fun:
 
 ```shellsession
 % TTYP_NOSHUF=1 ttypist <(fortune)
@@ -140,6 +140,16 @@ Start typing to begin test, <enter> to end.
 
 ```shellsession
 rg '\tfail' ~/.local/share/ttypist/ttypist-words.log | cut -f1 | sort | uniq -c | sort -nr | head -20
+```
+
+### Practice your magic key
+
+If you want to practice patterns you've set up as a
+[magic key](https://github.com/Ikcelaks/keyboard_layouts/blob/main/magic_sturdy/magic_sturdy.md),
+capture them in a regex and use like:
+
+```shellsession
+TTYP_PATTERN='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)' ttypist
 ```
 
 ### Plot of accuracy over time
@@ -159,14 +169,14 @@ for terminal plotting. (There are many other CLIs that can also do this.)
 
 ### Most efficient list of trigrams
 
-I find this to be a fascinating [selection of practice
-trigrams](https://www.reddit.com/r/typing/comments/172umsd/896_trigrams_in_200_words_a_new_selection_of/).
+I find this to be an interesting and maybe useful
+[selection of practice trigrams](https://www.reddit.com/r/typing/comments/172umsd/896_trigrams_in_200_words_a_new_selection_of/).
 
 ## Environment
 
 - `TTYP_NWORDS` — number of words in test (default `30`)
 - `TTYP_NOSHUF` — turn off random shuffling of words
-- `TTYP_POOLSIZE` — top-N words to choose from; ex: `50000` means almost everything (default `200`)
+- `TTYP_POOLBAND` — range of dict words to choose from; ex: `1-50000` means almost everything (default `1-200`)
 - `TTYP_PATTERN` — regex selector (quote it!) for words in test (default `.` means all)
 - `TTYP_DICT` — file to use as dictionary input
 - `TTYP_PENSECS` — time penalty in seconds; miss 3 words -> 3s (default `1`)
@@ -176,24 +186,25 @@ trigrams](https://www.reddit.com/r/typing/comments/172umsd/896_trigrams_in_200_w
 Sessions are logged by default to
 `~/.local/share/ttypist/ttypist-sessions.log`, word stats to
 `~/.local/share/ttypist/ttypist-words.log`. These can be used to see
-improvements over time, and identify words that need extra practice.
+improvements over time, and identify words that need extra practice. Adjust
+location as needed via `XDG_CONFIG_HOME`.
 
 ## Word list source
 
-I believe my process for generating the provided `10k-3.num` list file was
-taking the 1M-word [BNC
+I believe (based on poor memory) that my process for generating the provided
+`10k-3.num` list file was taking the 1M-word [BNC
 corpus](https://www.wordfrequency.info/100k_compare.asp) and making a
 rank/frequency/word TSV. It was useful for some keyboard layout analysis. You
 could use any word list and change the script to `cut` any column. At 170 KB,
 I didn't want to distribute bigger lists, but you may want to grab or generate
-for a 50+k list if you want a bigger `TTYP_POOLSIZE`.
+for a 50k+ list if you want a bigger `TTYP_POOLBAND`.
 
 ## Limitations
 
 There is no per-word timing. It'll take a fancier `read` mechanism.
 
-A test is based on a set of words, not on a timer. So there is no 1-minute
-test. If you're aiming for 60 wpm and want a 1-minute test, use
+A test is based on a set of words, not on a timer. So there is no perfect
+1-minute test. If you're aiming for 60 wpm and want a 1-minute test, use
 `TTYP_NWORDS=60` to approximate it.
 
 ## Inspiration

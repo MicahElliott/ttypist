@@ -3,7 +3,7 @@
 # ttypist — the simplest possible terminal-based typing tutor/speed test
 
 # TODO
-# change poolsize to poolband (200-1000) for true difficulty leveling
+# make high score dependent also on poolband, dict
 # premature end with calcs on return
 # process input args
 # word sets available by name (english200 etc)
@@ -21,8 +21,21 @@
 
 # dict=${TTYP_DICT-~/contrib/dict/10k-3.num}
 dict=${TTYP_DICT-${0:h}/../10k-3.num}
-nwords=${TTYP_NWORDS-30}
-poolsize=${TTYP_POOLSIZE-1000}
+nwords=${TTYP_NWORDS-50}
+
+# Set "band" range of words; allow for a single upper bound with 0 as default
+# if   [[ -n $TTYP_POOLBAND ]] && grep -E -v '[1-9][0-9]*-[1-9][0-9]*' <<< $TTYP_POOLBAND
+# then print "TTYP_POOLBAND must be an integer or range like 1-300"; exit 1
+# fi
+bands=${TTYP_POOLBAND-1-200}; bands=( ${(s:-:)bands} )
+# print bands $bands
+integer band1 band2
+if (( $#bands < 2 ))
+then band1=1         band2=$bands[1]
+else band1=$bands[1] band2=$bands[2]
+fi
+(( band1 == 0 )) && band1=1 # sed can't handle 0-base
+
 # pattern='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)'
 pattern=${TTYP_PATTERN-.}
 minwpm=${TTYP_MINWPM-50}
@@ -43,13 +56,14 @@ autoload -U colors; colors
 function shuffle { [[ ! -v TTYP_NOSHUF ]] && shuf <$1 || cat $1 ; }
 
 print "$fg[blue]TTYpist typing session$reset_color" # include session number etc
-print "NWORDS: $nwords | POOLSIZE: $poolsize | MINWPM: $minwpm | DICT: $dict | PATTERN: $pattern"
+print "NWORDS: $nwords | POOLBAND: $band1-$band2 | MINWPM: $minwpm | DICT: $dict | PATTERN: $pattern"
 
 # Select words randomly
 if   [[ -n $1 ]]
 then ques=( $(shuffle $1) )
 else # Safe to cut field 2+ on single-column file; just grabs first field!
-     pool=$(cut -f3 $dict | head -n $poolsize | grep -E $pattern | grep -E -v "[_'&]" | grep -E '...+')
+     # print -- cut -f3 $dict  'sed -n' "${band1},${band2}p"
+     pool=$(cut -f3 $dict | sed -n "${band1},${band2}p" | grep -E $pattern | grep -E -v "[_'&]" | grep -E '...+')
      ques=( $( shuffle <(print $pool) | head -n $nwords) )
 fi
 queschars=$ques
