@@ -56,7 +56,7 @@ autoload -U colors; colors
 function shuffle { [[ ! -v TTYP_NOSHUF ]] && shuf <$1 || cat $1 ; }
 
 print "$fg[blue]TTYpist typing session$reset_color" # include session number etc
-print "NWORDS: $nwords | POOLBAND: $band1-$band2 | MINWPM: $minwpm | DICT: $dict | PATTERN: $pattern"
+print "POOLBAND: $band1-$band2 | NWORDS: $nwords | MINWPM: $minwpm | DICT: $dict:t | PATTERN: $pattern"
 
 # Select words randomly
 if   [[ -n $1 ]]
@@ -136,7 +136,19 @@ printf "%d\t%.1f\t%.1f\t%d\n" $t0 $penwpm $accuracy $nwords >> $logsessions
 
 # Do missed words practice round
 if   [[ -n $misses ]]
-then for w in $misses; do repeats+="$w $w $w $w $w "; done
+then # shellcheck disable=1009
+     for w in $misses
+     do   repeats+="$w $w $w $w "
+          if [[ -z $TTYP_CHUNKS ]] || (( $#w < 4 )); then continue; fi
+          # Word chunks
+          # i1=$(( RANDOM % ( $#x + 1 - 4 ) + 1 )); i2=$(( i1 + 3 )); print $i1 $i2 $x[$i1,$i2]
+          # shellcheck disable=1073,2034
+          for  i in {1..8}
+          do   i1=$(( RANDOM % ( $#w + 1 - 4 ) + 1 )); i2=$(( i1 + 3 ))
+               chunk="$w[$i1,$i2] "; repeats+=$chunk; ques+=$chunk
+          done
+     done
+     # $foo $#foo foo+ foo.
      print "\nType these missed words (untimed free-form, as many times as you like):"
      freeform=$( print $(print -l $=repeats | shuf) )
      print_test "$freeform"

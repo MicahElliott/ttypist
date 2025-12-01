@@ -174,20 +174,21 @@ I find this to be an interesting and maybe useful
 
 ## Environment
 
-- `TTYP_NWORDS` — number of words in test (default `30`)
-- `TTYP_NOSHUF` — turn off random shuffling of words
 - `TTYP_POOLBAND` — range of dict words to choose from; ex: `1-50000` means almost everything (default `1-200`)
-- `TTYP_PATTERN` — regex selector (quote it!) for words in test (default `.` means all)
-- `TTYP_DICT` — file to use as dictionary input
-- `TTYP_PENSECS` — time penalty in seconds; miss 3 words -> 3s (default `1`)
+- `TTYP_NWORDS` — number of words in test (default `30`)
 - `TTYP_MINWPM` — minimum WPM to complete for successful exit (default `50`)
 - `TTYP_MINACC` — minimum accuracy to complete (default `95`)
+- `TTYP_DICT` — file to use as dictionary input
+- `TTYP_PATTERN` — regex selector (quote it!) for words in test (default `.` means all)
+- `TTYP_NOSHUF` — turn off random shuffling of words
+- `TTYP_PENSECS` — time penalty in seconds; miss 3 words -> 3s (default `1`)
+- `TTYP_CHUNKS` — add practicing of chunked partial words (default off)
 
 Sessions are logged by default to
 `~/.local/share/ttypist/ttypist-sessions.log`, word stats to
 `~/.local/share/ttypist/ttypist-words.log`. These can be used to see
 improvements over time, and identify words that need extra practice. Adjust
-location as needed via `XDG_CONFIG_HOME`.
+location as needed via `XDG_DATA_HOME`.
 
 ## Word list source
 
