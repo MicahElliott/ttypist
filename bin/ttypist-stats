@@ -1,0 +1,19 @@
+#! /bin/zsh
+
+# stats — display stats of sessions (and words??)
+
+ddir=${XDG_DATA_HOME-~/.local/share}/ttypist
+
+if ! command -v asciigraph >/dev/null
+then print 'asciigraph not installed (https://github.com/guptarohit/asciigraph)'
+     print 'Simplest way to install:'
+     print 'go install github.com/guptarohit/asciigraph/cmd/asciigraph@latest'
+     exit 1
+fi
+
+# Show graph
+print 'Sessions (last 50):'
+cut -f2 $ddir/ttypist-sessions.log | head -50 | asciigraph -h 5
+
+print '\nHardest words (top-20):'
+grep '	fail' $ddir/ttypist-words.log | cut -f1 | sort | uniq -c | sort -nr | head -20

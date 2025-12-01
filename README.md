@@ -68,7 +68,14 @@ that I prefer, without errors.
 If you need to backspace more than one character, use `Ctrl-W` to delete the
 whole word.
 
+The "missed words" practice session at the end is your chance to type anything
+you want. The presented exercise is just a suggestion, so if you wanna repeat
+something a bunch, go for it. Or end early or skip anything.
+
 ## Recipes
+
+Note that a few of these more complex examples are included as scripts that
+you can run, all starting with `ttypist-...`.
 
 ### Keybr
 
@@ -81,19 +88,20 @@ flexibly and permits magic keys):
 accum=()
 for c in t o s u d y c g h p m k b w f z v k x q j
 do  # Repeat test till sufficienly fast
-    while ! TTYP_POOLBAND=10000 TTYP_PATTERN='^['eniarl$c${(j::)accum}']*'$c'['eniarl$c${(j::)accum}']*$' ttypist; do : ; done
+    while ! TTYP_POOLBAND=10000 TTYP_PATTERN='^['eniarl$c${(j::)accum}']*'$c'['eniarl$c${(j::)accum}']*$' ttypist
+    do    print 'TOO SLOW'; done
     accum+=$c
 done
 ```
 
-For a better challenge, set `minwpm=60` and `TTYP_POOLBAND=10000`, and even
+For a better challenge, set `TTYP_MINWPM=60` and `TTYP_POOLBAND=10000`, and even
 `TTYP_PENSECS=3` (to force stricter accuracy).
 
-### Build-up: Increase difficulty in sequence of sessions
+### Work-up: Increase difficulty in sequence of sessions
 
 ```shellsession
 for level in 1 100 200 300 400 500
-do while ! TTYP_POOLBAND=$level-$((level+100)) ttypist; do print 'TOO SLOW'; done
+do while ! TTYP_MINWPM=60 TTYP_POOLBAND=$level-$((level+100)) ttypist; do print 'TOO SLOW'; done
 done
 ```
 

@@ -1,0 +1,13 @@
+#! /bin/zsh
+
+# workup — work through progressively harder words
+
+minwpm=${TTYP_MINWPM-60} # a little faster than default for this exercise
+
+autoload -U colors; colors
+
+for level in 1 100 200 300 400 500
+do while ! TTYP_MINWPM=$minwpm TTYP_POOLBAND=$level-$((level+100)) ttypist
+   do   print "$fg_bold[red]TOO SLOW$reset_color"
+   done
+done
