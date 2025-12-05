@@ -14,7 +14,7 @@ can be scripted around for a plethora of custom features.
 - Simplest possible UI
 - Clean and small Zsh script you can change (but shouldn't need to)
 - Clear side-by-side formatting of missed words
-- Metrics: accuracy, WPMs (actal and raw), penalties, counts, timings, sessions (saved as history)
+- Metrics: accuracy, WPMs (actually and raw), penalties, counts, timings, sessions (saved as history)
 - Graceful early quitting
 - Sophisticated regex-based training set selection
 - Retrain on missed words (custom)
@@ -97,6 +97,8 @@ done
 For a better challenge, set `TTYP_MINWPM=60` and `TTYP_POOLBAND=10000`, and even
 `TTYP_PENSECS=3` (to force stricter accuracy).
 
+Also as script: `ttypist-keybr`
+
 ### Work-up: Increase difficulty in sequence of sessions
 
 ```shellsession
@@ -104,6 +106,19 @@ for level in 1 100 200 300 400 500
 do while ! TTYP_MINWPM=60 TTYP_POOLBAND=$level-$((level+100)) ttypist; do print 'TOO SLOW'; done
 done
 ```
+
+Also as script: `ttypist-workup`
+
+### Longest words
+
+Oftentimes, the longest words are the hardest to type. This is a list of the
+"long" words sorted by importance (frequency).
+
+```shellsession
+head -1000 10k-3.num | cut -f1,3 | awk '{ print length(), $0 }' | sort -nr | head -150 | sed 's/^.. //' | sort -n | cut -f2
+```
+
+Also as script: `ttypist-longest`
 
 ### Monkeytype default: limit to Top-200 words for speed practice
 
@@ -144,7 +159,7 @@ Start typing to begin test, <enter> to end.
 ...
 ```
 
-### Identify hardest words
+### Identify your hardest words
 
 ```shellsession
 rg '\tfail' ~/.local/share/ttypist/ttypist-words.log | cut -f1 | sort | uniq -c | sort -nr | head -20
@@ -175,6 +190,8 @@ for terminal plotting. (There are many other CLIs that can also do this.)
  48.96 ┤        ╰─╯
 ```
 
+Also as script: `ttypist-stats`
+
 ### Most efficient list of trigrams
 
 I find this to be an interesting and maybe useful
@@ -190,7 +207,7 @@ I find this to be an interesting and maybe useful
 - `TTYP_PATTERN` — regex selector (quote it!) for words in test (default `.` means all)
 - `TTYP_NOSHUF` — turn off random shuffling of words
 - `TTYP_PENSECS` — time penalty in seconds; miss 3 words -> 3s (default `1`)
-- `TTYP_CHUNKS` — add practicing of chunked partial words (default off)
+- `TTYP_NOCHUNKS` — remove practicing of chunked partial words (default off)
 
 Sessions are logged by default to
 `~/.local/share/ttypist/ttypist-sessions.log`, word stats to

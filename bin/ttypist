@@ -143,7 +143,7 @@ if   [[ -n $misses ]]
 then # shellcheck disable=1009
      for w in $misses
      do   repeats+="$w $w $w $w "
-          if [[ -z $TTYP_CHUNKS ]] || (( $#w < 4 )); then continue; fi
+          if [[ -n $TTYP_NOCHUNKS ]] || (( $#w < 4 )); then continue; fi
           # Word chunks
           # i1=$(( RANDOM % ( $#x + 1 - 4 ) + 1 )); i2=$(( i1 + 3 )); print $i1 $i2 $x[$i1,$i2]
           # shellcheck disable=1073,2034

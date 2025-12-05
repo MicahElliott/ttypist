@@ -1,0 +1,15 @@
+#! /bin/zsh
+
+# longest — work through the longest (and frequent) words
+
+dict=${TTYP_DICT-${0:h}/../10k-3.num}
+nlines=50
+
+words=$(
+     head -1000 $dict | grep -v '[_]' | cut -f1,3 | awk '{ print length(), $0 }' |
+          sort -nr | head -200 | sed 's/^.. //' | sort -n | cut -f2 | shuf |
+          head -n $nlines
+
+)
+
+ttypist <(print $words)
