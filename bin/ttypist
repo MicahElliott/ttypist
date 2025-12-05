@@ -55,7 +55,11 @@ autoload -U colors; colors
 
 function shuffle { [[ ! -v TTYP_NOSHUF ]] && shuf <$1 || cat $1 ; }
 
-print "$fg[blue]TTYpist typing session$reset_color" # include session number etc
+# Print banner
+integer nsessions=$(( $(sed -n '$=' $logsessions) + 1 ))
+print  "$fg[blue]╭────────────────────────────────────╮"
+printf          "│    TTYpist Typing Session #%-5s   │\n" $nsessions # include session number etc
+print           "╰────────────────────────────────────╯$reset_color"
 print "POOLBAND: $band1-$band2 | NWORDS: $nwords | MINWPM: $minwpm | DICT: $dict:t | PATTERN: $pattern"
 
 # Select words randomly
