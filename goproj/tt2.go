@@ -52,18 +52,31 @@ func printTypos(words []Word) {
 
 func conductTest(words *[]Word, tgts []string, termState *term.State) {
 	var typedAcc strings.Builder
-	// t0 := time.Now()
-	timeDurMult := 50
+	timeDurMult := 300 // millis per char, or is "slow"
 
 	for _, tgt := range tgts {
+		t0 := time.Now()
 		for { // Loop over every char (as it's typed)
-			t0       := time.Now()
-			charByte := make([]byte, 1) // read one character
-			_, err   := os.Stdin.Read(charByte); if err != nil { fmt.Println("Error reading input:", err); break }
-			char     := string(charByte)
+			var buf [1]byte
+			n, err := os.Stdin.Read(buf[:])
+			if err != nil {
+				if err == io.EOF { break }
+				panic(err)
+			}
+			if n == 0 {continue}
+			asciiChar := buf[0]
+
+			char     := string(asciiChar)
+			// fmt.Printf("%d", asciiChar)
+
+			// charByte := make([]byte, 1) // read one character
+			// _, err   := os.Stdin.Read(charByte); if err != nil { fmt.Println("Error reading input:", err); break }
+			// char     := string(charByte)
+
 			if char == " " { // Check for space (end of word)
+				// Process and record word
 				typedStr := typedAcc.String()
-				if  typedStr != "" { // word was just reset, so at the end of it
+				if  typedStr != "" { // accumulator was just "Reset", so at the end of word
 					maxDur  := time.Duration(timeDurMult * len(typedStr)) // compute threshold for time allotment
 					elapsed := time.Now().Sub(t0)
 					word    := Word{ Canon:     tgt,             AsTyped:   typedStr,
@@ -74,17 +87,17 @@ func conductTest(words *[]Word, tgts []string, termState *term.State) {
 						fmt.Print("\b\b\b")
 						fmt.Printf(ColorGreen + typedStr + ColorReset)
 					} else if typedStr != tgt { // wrong
-						// fmt.Print(strings.Repeat("\b", len(typedStr)))
-						// fmt.Print(strings.Repeat(" ",  len(typedStr))) // refill with spaces to force-clear
-						// fmt.Print(strings.Repeat("\b", len(typedStr)))
-						// fmt.Print(ColorRed + tgt + ColorReset)
+						fmt.Print(strings.Repeat("\b", len(typedStr)))
+						fmt.Print(strings.Repeat(" ",  len(typedStr))) // refill with spaces to force-clear
+						fmt.Print(strings.Repeat("\b", len(typedStr)))
+						fmt.Print(ColorRed + tgt + ColorReset)
 						// maybe add to slow words now (of after session over)
 					} else if time.Millisecond * maxDur < elapsed { // too slow
-						// fmt.Print(strings.Repeat("\b", len(typedStr)))
-						// fmt.Print(ColorYellow + tgt + ColorReset)
+						fmt.Print(strings.Repeat("\b", len(typedStr)))
+						fmt.Print(ColorYellow + tgt + ColorReset)
 					} else {
-						// fmt.Print(strings.Repeat("\b", len(typedStr)))
-						// fmt.Print(ColorGreen + tgt + ColorReset)
+						fmt.Print(strings.Repeat("\b", len(typedStr)))
+						fmt.Print(ColorGreen + tgt + ColorReset)
 					}
 					fmt.Printf(" ")
 					*words = append(*words, word)
@@ -95,9 +108,34 @@ func conductTest(words *[]Word, tgts []string, termState *term.State) {
 				typedAcc.Reset() // Clear for the next typedStr
 				// fmt.Printf("\nbreaking2", typedStr, "\n")
 				break
+			} else if asciiChar == 127 {
+				// if asciiChar == 127 { fmt.Print("X") }
+				// fmt.Print("\b")  // backspace
+				fmt.Print("\b")  // backspace
+				// typedAcc.WriteString(char)
+				s := typedAcc.String()
+				if 0 < len(s) {
+					typedAcc.Reset()
+					s = s[:len(s)-1]
+					typedAcc.WriteString(s)
+				}
+				// fmt.Printf("\nDetected key: %c (ASCII %d)\n", asciiChar, asciiChar)
+			} else if asciiChar == 9 {
+				// maybe skip word? Interesting feature
+				fmt.Print("TAB")
+			} else if asciiChar == 8 { // Ctrl-backspace
+				// errase whole word
+				// fmt.Print("Z")
+				s := typedAcc.String()
+				if 0 < len(s) {
+					s := typedAcc.String()
+					fmt.Print(strings.Repeat("\b", len(s)))
+					typedAcc.Reset()
+				}
 			} else {
 				typedAcc.WriteString(char)
-				if char == "\b" { fmt.Print("X") } // can't detect backspace since in terminal "cooked" mode
+				// somehow being recognized with C-backspace
+				if char == "\b" { fmt.Print("XXX") } // can't detect backspace since in terminal "cooked" mode
 				fmt.Print(char)
 			}
 		}
