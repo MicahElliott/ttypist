@@ -22,6 +22,8 @@
 # dict=${TTYP_DICT-~/contrib/dict/10k-3.num}
 dict=${TTYP_DICT-${0:h}/../10k-3.num}
 nwords=${TTYP_NWORDS-50}
+acttype=${TTYP_ACTIVITY-standard}
+actid=$TTYP_ACTID
 
 # Set "band" range of words; allow for a single upper bound with 0 as default
 # if   [[ -n $TTYP_POOLBAND ]] && grep -E -v '[1-9][0-9]*-[1-9][0-9]*' <<< $TTYP_POOLBAND
@@ -72,16 +74,18 @@ else # Safe to cut field 2+ on single-column file; just grabs first field!
 fi
 queschars=$ques
 
+print '\nStart typing to begin test, <enter> to end.\n'
+
 # Show test words wrapped at 80 chars
 function print_test {
-     print
+     # print
      fold -w80 -s <<<$1 | while read -r ln; do print "  $bold_color$ln"; done
      print -n $reset_color
 }
 print_test "$ques"
+print
 
 # Start typing test
-print '\nStart typing to begin test, <enter> to end.\n'
 read -sk1 'char1?> '
 print -n "$char1"
 integer t0; t0=$(date '+%s') # separating to appease shellcheck
@@ -110,8 +114,8 @@ fi
 
 # Log missed words for future stats
 # TODO when becomes possible, log time taken
-for m in $misses; do print "$m\t$t0\tfail" >>$logwords; done
-for h in $hits;   do print "$h\t$t0\tpass" >>$logwords; done
+for m in $misses; do print "$m\t$t0\tfail\t$acttype\t$actid" >>$logwords; done
+for h in $hits;   do print "$h\t$t0\tpass\t$acttype\t$actid" >>$logwords; done
 
 # Finish timings
 t1=$(date '+%s')
@@ -153,7 +157,7 @@ then # shellcheck disable=1009
           done
      done
      # $foo $#foo foo+ foo.
-     print "\nType these missed words (untimed free-form, as many times as you like):"
+     print "\nType these missed words (untimed free-form, as many times as you like):\n"
      freeform=$( print $(print -l $=repeats | shuf) )
      print_test "$freeform"
      print

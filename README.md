@@ -59,7 +59,7 @@ Type these missed words (free-form, as many times as you like):
 ## Why
 
 This started as a small, fun exercise to see what could be prototyped in a
-small script and maybe eventally become a clone of [ttyper]. But as it started
+small script and maybe eventually become a clone of [ttyper]. But as it started
 taking shape, it became clear that it could do most of what ttyper does in ways
 that I prefer, without errors.
 
@@ -84,7 +84,7 @@ letters (`e n i a r l`) until you reach 35 WPM, at which point it advances you
 to add the next letter, `t`, and so on. TTYpist can do this too (but much more
 flexibly and permits magic keys):
 
-```shellsession
+```shell
 accum=()
 for c in t o s u d y c g h p m k b w f z v k x q j
 do  # Repeat test till sufficienly fast
@@ -101,7 +101,11 @@ Also as script: `ttypist-keybr`
 
 ### Work-up: Increase difficulty in sequence of sessions
 
-```shellsession
+This really helps focus on small sets of words. With the Keybr approach, you
+jump from 200 words straight to 1000, and that loses out on a lot of needed
+focused practice for the non-200 bands.
+
+```shell
 for level in 1 100 200 300 400 500
 do while ! TTYP_MINWPM=60 TTYP_POOLBAND=$level-$((level+100)) ttypist; do print 'TOO SLOW'; done
 done
@@ -114,7 +118,7 @@ Also as script: `ttypist-workup`
 Oftentimes, the longest words are the hardest to type. This is a list of the
 "long" words sorted by importance (frequency).
 
-```shellsession
+```shell
 head -1000 10k-3.num | cut -f1,3 | awk '{ print length(), $0 }' | sort -nr | head -150 | sed 's/^.. //' | sort -n | cut -f2
 ```
 
@@ -122,20 +126,20 @@ Also as script: `ttypist-longest`
 
 ### Monkeytype default: limit to Top-200 words for speed practice
 
-```shellsession
+```shell
 TTYP_POOLBAND=200 TTYP_NWORDS=60 ttypist
 ```
 
 ### Pomodoro (10-minute)
 
-```shellsession
+```shell
 tend=$(date -d '+10 minutes' +%s)
 while (( $(date +%s) < tend )); do ttypist; done
 ```
 
 ### British spellings, using your own dictionary
 
-```shellsession
+```shell
 TTYP_DICT=mybrit.txt ttypist
 ```
 
@@ -161,7 +165,7 @@ Start typing to begin test, <enter> to end.
 
 ### Identify your hardest words
 
-```shellsession
+```shell
 rg '\tfail' ~/.local/share/ttypist/ttypist-words.log | cut -f1 | sort | uniq -c | sort -nr | head -20
 ```
 
@@ -171,7 +175,7 @@ If you want to practice patterns you've set up as a
 [magic key](https://github.com/Ikcelaks/keyboard_layouts/blob/main/magic_sturdy/magic_sturdy.md),
 capture them in a regex and use like:
 
-```shellsession
+```shell
 TTYP_PATTERN='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)' ttypist
 ```
 
@@ -227,11 +231,18 @@ for a 50k+ list if you want a bigger `TTYP_POOLBAND`.
 
 ## Limitations
 
-There is no per-word timing. It'll take a fancier `read` mechanism.
+There is no per-word timing. It'll take a fancier `read` mechanism that likely
+needs a fancier language setup. Progress is in the works for using golang to
+reimplement at least the core of the input loop.
 
 A test is based on a set of words, not on a timer. So there is no perfect
 1-minute test. If you're aiming for 60 wpm and want a 1-minute test, use
 `TTYP_NWORDS=60` to approximate it.
+
+No per-letter stats.
+
+No progress saving in scripts. Could add a "starting point" for keybr and
+work-up scripts.
 
 ## Inspiration
 
