@@ -12,4 +12,4 @@ words=$(
 
 )
 
-ttypist <(print $words)
+TTYP_ACTIVITY=longest TTYP_POOLBAND=1000 ttypist <(print $words)

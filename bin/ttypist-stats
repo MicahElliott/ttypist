@@ -3,6 +3,8 @@
 # stats — display stats of sessions (and words??)
 
 ddir=${XDG_DATA_HOME-~/.local/share}/ttypist
+acttype=$TTYP_ACTIVITY
+actid=$TTYP_ACTID
 
 if ! command -v asciigraph >/dev/null
 then print 'asciigraph not installed (https://github.com/guptarohit/asciigraph)'
@@ -11,9 +13,15 @@ then print 'asciigraph not installed (https://github.com/guptarohit/asciigraph)'
      exit 1
 fi
 
+# TODO limit to TTYP_ACTIVITY
+
 # Show graph
-print 'Sessions (last 50):'
-cut -f2 $ddir/ttypist-sessions.log | head -50 | asciigraph -h 5
+if   [[ -z $TTYP_ACTIVITY ]]
+then print 'Sessions (last 50):'
+     cut -f2 $ddir/ttypist-sessions.log | head -50 | asciigraph -h 5
+else print "Activities:"
+     grep "	$acttype	$actid" | cut -f2 $ddir/ttypist-sessions.log | head -50 | asciigraph -h 5
+fi
 
 print '\nHardest words (top-20):'
 grep '	fail' $ddir/ttypist-words.log | cut -f1 | sort | uniq -c | sort -nr | head -20

@@ -6,8 +6,19 @@ minwpm=${TTYP_MINWPM-60} # a little faster than default for this exercise
 
 autoload -U colors; colors
 
-for level in 1 100 200 300 400 500
-do while ! TTYP_MINWPM=$minwpm TTYP_POOLBAND=$level-$((level+100)) ttypist
-   do   print "$fg_bold[red]TOO SLOW$reset_color"
-   done
+print 'Work-Up exercise to practice one set of 100 at a time, up to 1000.\n'
+
+export TTYP_ACTIVITY=workup
+export TTYP_ACTID=$(date '+%s')
+export TTYP_MINWPM=$minwpm
+
+trap     dostats SIGINT
+function dostats { ttypist-stats workup; }
+
+for  level in 1 100 200 300 400 500 600 700 800 900
+do   band=$level-$((level+100))
+     print "\n$fg_bold[blue]New band: $band$reset_color"
+     while ! TTYP_POOLBAND=$band ttypist
+     do    print "$fg_bold[red]TOO SLOW\n$reset_color"
+     done
 done
