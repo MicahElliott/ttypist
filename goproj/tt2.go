@@ -8,6 +8,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	// "os/exec"
 	"io"
 	// "errors"
@@ -18,9 +19,11 @@ import (
 	"time"
 
 	"golang.org/x/term"
+
+	"micahelliott/ttypist/stats"
 )
 
-type Word struct {
+type	Learnable struct {
 	Canon     string
 	AsTyped   string
 	IsCorrect bool
@@ -43,28 +46,41 @@ const (
 	ColorReset  = "\x1b[0m"
 )
 
-func printTypos(words []Word) {
+func	printTypos(words []Learnable) {
 	fmt.Println("\nTypos: ...")
 	for _, w := range words {
 		if !w.IsCorrect { fmt.Println(w) }
 	}
 }
 
-func conductTest(words *[]Word, tgts []string, termState *term.State) {
-	var typedAcc strings.Builder
-	timeDurMult := 300 // millis per char, or is "slow"
+// Conduct a single-line typing test.
+func	conductTestLine(words *[]Learnable, tgts []string, st0 int) {
+	fmt.Println("\n  " + strings.Join(tgts, " "))
+	fmt.Print("> ")
 
-	for _, tgt := range tgts {
+	// Get the file descriptor for standard input. This messes with printing
+	// further output, so all from here needs to be handled carefully and then
+	// "restored"
+	oldState, err := term.MakeRaw(int(syscall.Stdin))
+	if err != nil { panic(err) }
+
+	var typedAcc strings.Builder
+	timeDurMult := 250 // millis per char, or is considered "slow"
+	// Set up for not starting timer till first char it typed
+	word1 := true
+
+	for	_, tgt := range tgts {
 		t0 := time.Now()
-		for { // Loop over every char (as it's typed)
+		for	{ // Loop over every char (as it's typed)
 			var buf [1]byte
 			n, err := os.Stdin.Read(buf[:])
 			if err != nil {
 				if err == io.EOF { break }
 				panic(err)
 			}
-			if n == 0 {continue}
+			if	n == 0 {continue}
 			asciiChar := buf[0]
+			if	word1 { t0 = time.Now(); word1 = false }
 
 			char     := string(asciiChar)
 			// fmt.Printf("%d", asciiChar)
@@ -73,14 +89,16 @@ func conductTest(words *[]Word, tgts []string, termState *term.State) {
 			// _, err   := os.Stdin.Read(charByte); if err != nil { fmt.Println("Error reading input:", err); break }
 			// char     := string(charByte)
 
-			if char == " " { // Check for space (end of word)
+			if	char == " " { // Check for space (end of word)
 				// Process and record word
 				typedStr := typedAcc.String()
-				if  typedStr != "" { // accumulator was just "Reset", so at the end of word
-					maxDur  := time.Duration(timeDurMult * len(typedStr)) // compute threshold for time allotment
+				if	typedStr != "" { // accumulator was just "Reset", so at the end of word
+					maxDur  := time.Duration(timeDurMult * len(typedStr) + timeDurMult) // compute threshold for time allotment
 					elapsed := time.Now().Sub(t0)
-					word    := Word{ Canon:     tgt,             AsTyped:   typedStr,
-						             IsCorrect: typedStr == tgt, TimeTaken: elapsed }
+					word    := Learnable{ Lid:     tgt,             AsTyped:   typedStr,
+						  IsCorrect: typedStr == tgt, TimeTaken: elapsed,
+						Esecs: st0
+					}
 					// fmt.Printf("\nRead typedStr: %s\n", typedStr)
 					if        typedStr == "exit" { // fmt.Printf("\nbreaking\n"); break
 					} else if typedStr == "cat"  {
@@ -101,18 +119,11 @@ func conductTest(words *[]Word, tgts []string, termState *term.State) {
 					}
 					fmt.Printf(" ")
 					*words = append(*words, word)
-					// fmt.Print(elapsed)
-					// words = append(words, Word{IsCorrect: true, TimeTaken: elapsed})
-					// word.TimeTaken = time.Now().Sub(t0)
 				}
 				typedAcc.Reset() // Clear for the next typedStr
-				// fmt.Printf("\nbreaking2", typedStr, "\n")
 				break
 			} else if asciiChar == 127 {
-				// if asciiChar == 127 { fmt.Print("X") }
-				// fmt.Print("\b")  // backspace
 				fmt.Print("\b")  // backspace
-				// typedAcc.WriteString(char)
 				s := typedAcc.String()
 				if 0 < len(s) {
 					typedAcc.Reset()
@@ -121,11 +132,10 @@ func conductTest(words *[]Word, tgts []string, termState *term.State) {
 				}
 				// fmt.Printf("\nDetected key: %c (ASCII %d)\n", asciiChar, asciiChar)
 			} else if asciiChar == 9 {
-				// maybe skip word? Interesting feature
+				// TODO maybe skip word? Interesting feature
 				fmt.Print("TAB")
 			} else if asciiChar == 8 { // Ctrl-backspace
 				// errase whole word
-				// fmt.Print("Z")
 				s := typedAcc.String()
 				if 0 < len(s) {
 					s := typedAcc.String()
@@ -137,60 +147,60 @@ func conductTest(words *[]Word, tgts []string, termState *term.State) {
 				// somehow being recognized with C-backspace
 				if char == "\b" { fmt.Print("XXX") } // can't detect backspace since in terminal "cooked" mode
 				fmt.Print(char)
-			}
-		}
-	}
-	fmt.Print(ColorReset + "\n\n")
-	term.Restore(int(syscall.Stdin), termState)
+			}}}
+	fmt.Print(ColorReset + "\n")
+	term.Restore(int(syscall.Stdin), oldState)
 }
 
 func main() {
-	// words := []Word
 	if len(os.Args) < 2 {
-		// fmt.Errorf()
 		fmt.Fprintln(os.Stderr, "Must pass an input string of words")
-		// fmt.Println(errors.New("Must pass an input string of words"))
 		os.Exit(1)
-		// log.Fatal("Must pass an input string of words")
 	}
 
-	sessionT0 := time.Now()
+	// sessionT0 := time.Now() // TODO session timing
+	st0 := time.Now()
+	session := stats.Tsession{Esecs: st0}
 
-	fmt.Println(os.Args)
+	// fmt.Println(os.Args)
 	tgtsStr := os.Args[1]
-	fmt.Printf("%T", tgtsStr)
+	// fmt.Printf("%T", tgtsStr)
 	tgts := strings.Fields(tgtsStr)
-	fmt.Println(tgts)
-	// tgtsStr := os.Args
-	// var words = []Word
-	// TODO Should move words fully into conductTest and not be a ptr
-	words := []Word{}
-	// words := []Word{ {IsCorrect: true, TimeTaken: 0.0} }
-	fmt.Println(words)
-	// words = append()
+	// fmt.Println(tgts)
+	// TODO Should maybe move words fully into conductTestLine and not be a ptr
+	words := []Learnable{}
+	// fmt.Println(words)
 
-	words = append(words, Word{"stoner", "stnr", false, time.Now().Sub(sessionT0)})
-	fmt.Println(words)
+	// words = append(words, Learnable{"stoner", "stnr", false, time.Now().Sub(sessionT0)})
+	// fmt.Println(words)
 
 	// readIncoming()
 
 	fmt.Println("Enter words (type 'exit' to quit):")
-	fmt.Println("\n  " + strings.Join(tgts, " "))
-	fmt.Print("> ")
+	// defer term.Restore(int(syscall.Stdin), oldState) // Ensure terminal is restored on exit
 
-	// Get the file descriptor for standard input. This messes with printing
-	// further output, so all from here needs to be handled carefully and then
-	// "restored"
-	oldState, err := term.MakeRaw(int(syscall.Stdin))
-	if err != nil { panic(err) }
-	defer term.Restore(int(syscall.Stdin), oldState) // Ensure terminal is restored on exit
+	fd := int(os.Stdin.Fd())
+	termWidth, _, err := term.GetSize(fd)
+	if err != nil { fmt.Printf("Error getting size: %v\n", err) }
 
-	conductTest(&words, tgts, oldState)
+	// wpl := 15 // words per line
+	wpl := termWidth / 7 // words per line
+	fmt.Printf("wpl: %d, width: %d\n", wpl, termWidth)
+	nLines := int(math.Ceil(float64(len(tgts)) / float64(wpl)))
+	for i := range nLines {
+		eor := min(i*wpl+wpl-1, len(tgts))
+		conductTestLine(&words, tgts[i*wpl:eor])
+	}
+	// conductTestLine(&words, tgts[0:9])
 
 	// fmt.Println(ColorReset)
 	// term.Restore(int(syscall.Stdin), oldState)
 
 	printTypos(words)
+
+	session.Speed = 42.0
+	session.Accuracy = 69.0
+	session.Nquestions = 20
 
 	fmt.Println("\n", words)
 	fmt.Println("\n\nExiting.")
