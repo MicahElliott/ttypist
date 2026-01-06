@@ -5,21 +5,55 @@
 package stats
 
 import (
-	"database/sql"
 	"time"
+
+	null "github.com/guregu/null/v6"
 )
 
-type Learnable struct {
-	Lid      sql.NullString
-	Esecs    time.Time
-	Timer    time.Duration
-	Score    string
-	Activity sql.NullString
+type Distractor struct {
+	Did   int64
+	Qid   int64
+	Dtext string
 }
 
-type Tsession struct {
-	Esecs      time.Time
-	Speed      float64
-	Accuracy   float64
-	Nquestions int64
+type Encounter struct {
+	Eid     int64
+	Qid     int64
+	Tstamp  int64
+	Estamp  time.Time
+	Entered string
+	Timer   time.Duration
+	Correct bool
+	Score   null.String
+	Acty    null.String
+}
+
+type Learnable struct {
+	Lid    int64
+	Lname  string
+	Lrank  null.Int
+	Defn   null.String
+	Diffy  null.Int
+	Course string
+}
+
+type Question struct {
+	Qid   int64
+	Lid   int64
+	Qtype string
+	Qtext null.String
+}
+
+type Strength struct {
+	Sid int64
+	Lid int64
+	Val int64
+}
+
+type Training struct {
+	Tstamp time.Time
+	Speed  float64
+	Accy   float64
+	Nqtns  int64
+	Style  null.String
 }

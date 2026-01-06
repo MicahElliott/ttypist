@@ -9,31 +9,55 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	null "github.com/guregu/null/v6"
 )
 
-const createLearnable = `-- name: CreateLearnable :execresult
-INSERT INTO learnable (
-  lid, esecs, timer, score, activity
-) VALUES (
-  ?, ?, ?, ?, ?
-)
+const createEncounter = `-- name: CreateEncounter :execresult
+INSERT INTO encounter ( qid, tstamp, estamp, entered, timer, correct, acty ) VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
-type CreateLearnableParams struct {
-	Lid      sql.NullString
-	Esecs    time.Time
-	Timer    time.Duration
-	Score    string
-	Activity sql.NullString
+type CreateEncounterParams struct {
+	Qid     int64
+	Tstamp  int64
+	Estamp  time.Time
+	Entered string
+	Timer   time.Duration
+	Correct bool
+	Acty    null.String
 }
 
-func (q *Queries) CreateLearnable(ctx context.Context, arg CreateLearnableParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, createLearnable,
-		arg.Lid,
-		arg.Esecs,
+func (q *Queries) CreateEncounter(ctx context.Context, arg CreateEncounterParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createEncounter,
+		arg.Qid,
+		arg.Tstamp,
+		arg.Estamp,
+		arg.Entered,
 		arg.Timer,
-		arg.Score,
-		arg.Activity,
+		arg.Correct,
+		arg.Acty,
+	)
+}
+
+const createTraining = `-- name: CreateTraining :execresult
+INSERT INTO training ( tstamp, speed, accy, nqtns, style ) VALUES (?, ?, ?, ?, ?)
+`
+
+type CreateTrainingParams struct {
+	Tstamp time.Time
+	Speed  float64
+	Accy   float64
+	Nqtns  int64
+	Style  null.String
+}
+
+func (q *Queries) CreateTraining(ctx context.Context, arg CreateTrainingParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createTraining,
+		arg.Tstamp,
+		arg.Speed,
+		arg.Accy,
+		arg.Nqtns,
+		arg.Style,
 	)
 }
 
@@ -42,31 +66,92 @@ DELETE FROM learnable
 WHERE lid = ?
 `
 
-func (q *Queries) DeleteLearnable(ctx context.Context, lid sql.NullString) error {
+func (q *Queries) DeleteLearnable(ctx context.Context, lid int64) error {
 	_, err := q.db.ExecContext(ctx, deleteLearnable, lid)
 	return err
 }
 
 const getLearnable = `-- name: GetLearnable :one
-SELECT lid, esecs, timer, score, activity FROM learnable
+
+SELECT lid, lname, lrank, defn, diffy, course FROM learnable
 WHERE lid = ? LIMIT 1
 `
 
-func (q *Queries) GetLearnable(ctx context.Context, lid sql.NullString) (Learnable, error) {
+// Global Queries
+func (q *Queries) GetLearnable(ctx context.Context, lid int64) (Learnable, error) {
 	row := q.db.QueryRowContext(ctx, getLearnable, lid)
 	var i Learnable
 	err := row.Scan(
 		&i.Lid,
-		&i.Esecs,
-		&i.Timer,
-		&i.Score,
-		&i.Activity,
+		&i.Lname,
+		&i.Lrank,
+		&i.Defn,
+		&i.Diffy,
+		&i.Course,
 	)
 	return i, err
 }
 
+const getQuestionsInBand = `-- name: GetQuestionsInBand :many
+SELECT l.lid, l.lname, l.lrank, l.defn, l.diffy, l.course,
+       q.qtype, q.qid
+FROM learnable l JOIN question q ON l.lid = q.lid
+WHERE ?1 <= lrank AND lrank < ?2
+ORDER BY random()
+LIMIT ?3
+`
+
+type GetQuestionsInBandParams struct {
+	Low      null.Int
+	Hi       null.Int
+	Bandsize int64
+}
+
+type GetQuestionsInBandRow struct {
+	Lid    int64
+	Lname  string
+	Lrank  null.Int
+	Defn   null.String
+	Diffy  null.Int
+	Course string
+	Qtype  string
+	Qid    int64
+}
+
+func (q *Queries) GetQuestionsInBand(ctx context.Context, arg GetQuestionsInBandParams) ([]GetQuestionsInBandRow, error) {
+	rows, err := q.db.QueryContext(ctx, getQuestionsInBand, arg.Low, arg.Hi, arg.Bandsize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetQuestionsInBandRow
+	for rows.Next() {
+		var i GetQuestionsInBandRow
+		if err := rows.Scan(
+			&i.Lid,
+			&i.Lname,
+			&i.Lrank,
+			&i.Defn,
+			&i.Diffy,
+			&i.Course,
+			&i.Qtype,
+			&i.Qid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLearnables = `-- name: ListLearnables :many
-SELECT lid, esecs, timer, score, activity FROM learnable
+SELECT lid, lname, lrank, defn, diffy, course FROM learnable
 ORDER BY lid
 `
 
@@ -81,10 +166,11 @@ func (q *Queries) ListLearnables(ctx context.Context) ([]Learnable, error) {
 		var i Learnable
 		if err := rows.Scan(
 			&i.Lid,
-			&i.Esecs,
-			&i.Timer,
-			&i.Score,
-			&i.Activity,
+			&i.Lname,
+			&i.Lrank,
+			&i.Defn,
+			&i.Diffy,
+			&i.Course,
 		); err != nil {
 			return nil, err
 		}

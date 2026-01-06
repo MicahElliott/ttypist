@@ -7,5 +7,31 @@ sql:
       go:
         package: "stats"
         out: "stats"
+        # emit_pointers_for_null_types: true
         overrides:
-          - { column: "learnable.timer", go_type: "time.Duration" }
+          # - { go_type: "github.com/guregu/null/v6.Int",    db_type: "int",     nullable: true }
+          - column: "encounter.timer"
+            go_type: "time.Duration" 
+          - db_type: "int"
+            nullable: true
+            go_type: { type: "Int", import: "github.com/guregu/null/v6" } # pointer: true
+          - db_type: "text"
+            nullable: true
+            go_type: { type: "String", import: "github.com/guregu/null/v6" }
+          - db_type: "boolean"
+            nullable: true
+            go_type: { type: "Bool", import: "github.com/guregu/null/v6" }
+          - db_type: "float"
+            nullable: true
+            go_type: { type: "Float", import: "github.com/guregu/null/v6" }
+          
+
+          # - go_type: "github.com/guregu/null/v6.String"
+          #   db_type: "text"
+          #   nullable: true 
+          # - go_type: "github.com/guregu/null/v6.Bool"
+          #   db_type: "boolean"
+          #   nullable: true 
+          # - go_type: "github.com/guregu/null/v6.Float"
+          #   db_type: "float"
+          #   nullable: true 

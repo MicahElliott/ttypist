@@ -8,27 +8,37 @@ package main
 
 import (
 	"fmt"
-	"math"
-	// "os/exec"
 	"io"
-	// "errors"
-	// "log"
 	"os"
 	"strings"
 	"syscall"
 	"time"
+	"math"
+	"context"
+	// "os/exec"
+	// "errors"
+	// "log"
+	"database/sql"
 
 	"golang.org/x/term"
 
 	"micahelliott/ttypist/stats"
 )
 
-type	Learnable struct {
-	Canon     string
-	AsTyped   string
-	IsCorrect bool
-	TimeTaken time.Duration
+var db *sql.DB
+
+type Word struct {
+	stats.Learnable
+	stats.Question
+	stats.Encounter
 }
+
+// type	Learnable struct {
+// 	Canon     string
+// 	AsTyped   string
+// 	IsCorrect bool
+// 	TimeTaken time.Duration
+// }
 
 func readIncoming() {
 	data, err := io.ReadAll(os.Stdin)
@@ -46,15 +56,15 @@ const (
 	ColorReset  = "\x1b[0m"
 )
 
-func	printTypos(words []Learnable) {
+func	printTypos(words []stats.Encounter) {
 	fmt.Println("\nTypos: ...")
 	for _, w := range words {
-		if !w.IsCorrect { fmt.Println(w) }
+		if !w.Iscorrect { fmt.Println(w) }
 	}
 }
 
 // Conduct a single-line typing test.
-func	conductTestLine(words *[]Learnable, tgts []string, st0 int) {
+func	conductTestLine(words *[]Word, tgts []string, st0 time.Time) {
 	fmt.Println("\n  " + strings.Join(tgts, " "))
 	fmt.Print("> ")
 
@@ -95,9 +105,13 @@ func	conductTestLine(words *[]Learnable, tgts []string, st0 int) {
 				if	typedStr != "" { // accumulator was just "Reset", so at the end of word
 					maxDur  := time.Duration(timeDurMult * len(typedStr) + timeDurMult) // compute threshold for time allotment
 					elapsed := time.Now().Sub(t0)
-					word    := Learnable{ Lid:     tgt,             AsTyped:   typedStr,
-						  IsCorrect: typedStr == tgt, TimeTaken: elapsed,
-						Esecs: st0
+					// word := Word{ Lid: tgt, AsTyped: typedStr, IsCorrect: typedStr == tgt, TimeTaken: elapsed, Esecs: st0,
+					word    := Word{
+						Learnable: stats.Learnable{Lname: tgt},
+						Question:  stats.Question{Lid: XXX}
+						Encounter: stats.Encounter{
+							Entered: typedStr,	Correct: typedStr == tgt,
+							Timer: elapsed,	Estamp: st0 },
 					}
 					// fmt.Printf("\nRead typedStr: %s\n", typedStr)
 					if        typedStr == "exit" { // fmt.Printf("\nbreaking\n"); break
@@ -109,7 +123,7 @@ func	conductTestLine(words *[]Learnable, tgts []string, st0 int) {
 						fmt.Print(strings.Repeat(" ",  len(typedStr))) // refill with spaces to force-clear
 						fmt.Print(strings.Repeat("\b", len(typedStr)))
 						fmt.Print(ColorRed + tgt + ColorReset)
-						// maybe add to slow words now (of after session over)
+						// maybe add to slow words now (of after training over)
 					} else if time.Millisecond * maxDur < elapsed { // too slow
 						fmt.Print(strings.Repeat("\b", len(typedStr)))
 						fmt.Print(ColorYellow + tgt + ColorReset)
@@ -152,15 +166,22 @@ func	conductTestLine(words *[]Learnable, tgts []string, st0 int) {
 	term.Restore(int(syscall.Stdin), oldState)
 }
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "Must pass an input string of words")
-		os.Exit(1)
-	}
+func main4() {
+	// TODO re-enable reading words from stdin
+	// if len(os.Args) < 2 {fmt.Fprintln(os.Stderr, "Must pass an input string of words"); os.Exit(1)}
+	nqtns := int64(10)
 
-	// sessionT0 := time.Now() // TODO session timing
+	ctx := context.Background()
+	dbPath := "./ttypist.db" // FIXME be smarter about location
+	var err error
+	db, err = sql.Open("sqlite", dbPath)
+
+	if err != nil { panic(err) }
+	defer db.Close()
+
 	st0 := time.Now()
-	session := stats.Tsession{Esecs: st0}
+	dbq := stats.New(db)
+	// training := stats.Training{}
 
 	// fmt.Println(os.Args)
 	tgtsStr := os.Args[1]
@@ -168,7 +189,10 @@ func main() {
 	tgts := strings.Fields(tgtsStr)
 	// fmt.Println(tgts)
 	// TODO Should maybe move words fully into conductTestLine and not be a ptr
-	words := []Learnable{}
+	low, hi := int64(1), int64(20)
+	words, err := dbq.GetQuestionsInBand(ctx, stats.GetQuestionsInBandParams{
+		Low: &low, Hi: &hi, Bandsize: 200})
+	// words := []Learnable{}
 	// fmt.Println(words)
 
 	// words = append(words, Learnable{"stoner", "stnr", false, time.Now().Sub(sessionT0)})
@@ -198,9 +222,9 @@ func main() {
 
 	printTypos(words)
 
-	session.Speed = 42.0
-	session.Accuracy = 69.0
-	session.Nquestions = 20
+	training, err := dbq.CreateTraining(ctx, stats.CreateTrainingParams{
+		Tstamp: st0, Nqtns: nqtns, Speed: 42.0, Accy: 69.0})
+	fmt.Println("training: ", training)
 
 	fmt.Println("\n", words)
 	fmt.Println("\n\nExiting.")
