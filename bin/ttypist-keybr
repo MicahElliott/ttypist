@@ -20,6 +20,6 @@ for  c in l t o s u d y c g h p m k b w f z v k x q j
 do   # Repeat test till sufficiently fast
      print "\n$fg_bold[blue]New letter: $c$reset_color"
      while ! TTYP_PATTERN='^['eniar$c${(j::)accum}']*'$c'['eniar$c${(j::)accum}']*$' ttypist
-     do    print "$fg_bold[red]TOO SLOW\n$reset_color"; done
+     do    print "$fg_bold[red]TOO SLOW — REPEAT\n$reset_color"; done
      accum+=$c
 done

@@ -2,23 +2,33 @@
 
 # workup — work through progressively harder words
 
+# IDEA workdown from 1000 with increasing speed each round
+
 minwpm=${TTYP_MINWPM-60} # a little faster than default for this exercise
 
 autoload -U colors; colors
 
-print 'Work-Up exercise to practice one set of 100 at a time, up to 1000.\n'
+print '   ╻ ╻┏━┓┏━┓╻┏    ╻ ╻┏━┓'
+print '   ┃╻┃┃ ┃┣┳┛┣┻┓╺━╸┃ ┃┣━┛'
+print '   ┗┻┛┗━┛╹┗╸╹ ╹   ┗━┛╹  '
+print 'Work-Up exercise to practice one set of 100 at a time, up to 1000.'
 
 export TTYP_ACTIVITY=workup
 export TTYP_ACTID=$(date '+%s')
 export TTYP_MINWPM=$minwpm
+startlevel=${TTYP_LEVEL-1} # support resuming last session
 
+# FIXME this is good for finishing level prematurely, but then no way to fully exit
 trap     dostats SIGINT
 function dostats { ttypist-stats workup; }
 
-for  level in 1 100 200 300 400 500 600 700 800 900
+levels=( 1 100 200 300 400 500 600 700 800 900 )
+activelevels=( $levels[$startlevel,-1] )
+
+for  level in $activelevels
 do   band=$level-$((level+100))
      print "\n$fg_bold[blue]New band: $band$reset_color"
      while ! TTYP_POOLBAND=$band ttypist
-     do    print "$fg_bold[red]TOO SLOW\n$reset_color"
+     do    print "$fg_bold[red]TOO SLOW — REPEAT\n$reset_color"
      done
 done
