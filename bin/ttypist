@@ -41,7 +41,7 @@ fi
 # pattern='(print|word|tt|cc|con|tion|ment|able|ject|ould|ight|ment)'
 pattern=${TTYP_PATTERN-.}
 minwpm=${TTYP_MINWPM-50}
-minacc=${TTYP_MINACC-95}
+minacc=${TTYP_MINACC-92}
 pensecs=${TTYP_PENSECS-1} # penalty seconds
 
 # Set up logging
@@ -62,7 +62,7 @@ integer nsessions=$(( $(sed -n '$=' $logsessions) + 1 ))
 print  "$fg[blue]╭────────────────────────────────────╮"
 printf          "│    TTYpist Typing Session #%-5s   │\n" $nsessions # include session number etc
 print           "╰────────────────────────────────────╯$reset_color"
-print "POOLBAND: $band1-$band2 | NWORDS: $nwords | MINWPM: $minwpm | DICT: $dict:t | PATTERN: $pattern"
+print "POOLBAND: $band1-$band2 | NWORDS: $nwords | MINWPM: $minwpm | MINACC: $minacc | DICT: $dict:t | PATTERN: $pattern"
 
 # Select words randomly
 if   [[ -n $1 ]]
@@ -126,12 +126,12 @@ print "\nTest of $#ques words took $testtime seconds."
 # Print summary stats
 rawwpm=$(( $#queschars / 5. / testtime * 60 ))
 penwpm=$(( $#queschars / 5. / pentime  * 60 ))
-wpmcolor=red; (( minwpm < penwpm  )) && wpmcolor=green
+wpmcolor=red; (( minwpm <= penwpm  )) && wpmcolor=green
 integer ncorrect=$( comm -12 <(sort <(print -l $ques)) <(sort <(print -l $ans)) | wc -l )
 accuracy=$(( $ncorrect. / $#ques * 100 ))
 acccolor=red; (( minacc <= accuracy )) && acccolor=green
 printf "WPM: $fg_bold[$wpmcolor]%.1f$reset_color (raw: %.1f)\n" $penwpm $rawwpm
-printf "Acc: $fg_bold[$acccolor]%.0f%%$reset_color ($ncorrect/$#ques)\n" $accuracy
+printf "Acc: $fg_bold[$acccolor]%.0f%%$reset_color  ($ncorrect/$#ques)\n" $accuracy
 
 # Get previous high score
 integer prevhi=$(grep "	$nwords$" $logsessions |cut -f2 | sort -n | tail -1)
@@ -172,5 +172,5 @@ then # shellcheck disable=1009
      fi
 fi
 
-# Exit with WPM as fail status if speed too slow
-(( penwpm < minwpm )) && exit "$(printf '%d' $penwpm)" || exit 0
+# Exit with WPM as fail status if speed too slow or accuracy too low
+if (( penwpm < minwpm )) || (( accuracy < minacc )); then exit "$(printf '%d' $penwpm)"; else exit 0; fi
