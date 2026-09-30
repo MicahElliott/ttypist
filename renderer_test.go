@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPrintPromptUsesTerminalSafeLineBreaks(t *testing.T) {
@@ -53,5 +54,26 @@ func TestReadInputDiscardsCSIArrowSequence(t *testing.T) {
 	input, ok, err := readInput(reader)
 	if err != nil || !ok || input.Kind != InputRune || input.Rune != 'x' {
 		t.Fatalf("post-escape input = %+v, %v, %v", input, ok, err)
+	}
+}
+
+func TestPrintSessionSummaryKeepsMissesAtColumnZero(t *testing.T) {
+	base := time.Unix(0, 0)
+	session := NewSession([]string{"one", "two"}, DefaultTimingConfig())
+	for _, word := range []string{"nrhe", "twheh"} {
+		for _, r := range word {
+			if err := session.Apply(RuneInput(r), base.Add(time.Second)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := session.Apply(Input{Kind: InputSpace}, base.Add(2*time.Second)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var output bytes.Buffer
+	printSessionSummary(&output, session)
+	if got, want := output.String(), "\x1b[31mnrhe\x1b[0m -> one\r\n\x1b[31mtwheh\x1b[0m -> two\r\n"; !strings.HasPrefix(got, want) {
+		t.Fatalf("summary misses = %q, want prefix %q", got, want)
 	}
 }

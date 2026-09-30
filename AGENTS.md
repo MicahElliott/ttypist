@@ -12,6 +12,9 @@ shared directory is unavailable, continue with this file and mention it.
 Preserve existing user changes. Do not commit or push unless explicitly asked.
 Use `apply_patch` for edits, keep diffs focused, and run the relevant Makefile
 checks after changes.
+After each implementation step is verified, print a detailed, pasteable commit
+message for that step. When confidence is high, it is also fine to provide the
+message speculatively before final confirmation. Do not commit automatically.
 
 ## Project intent
 
@@ -43,6 +46,9 @@ explicitly asks for an end-to-end MVP pass.
   Target-WPM timing overrides the default 250 ms per target rune when set.
 - Never split a word across lines or accept a word wider than the available
   prompt width.
+- Renderer line breaks must be `\r\n`; a bare `\n` can preserve the terminal
+  cursor column and indent subsequent scrollback lines. Keep a regression test
+  for line-oriented output when changing the renderer.
 
 ## Build and verify
 

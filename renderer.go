@@ -165,7 +165,7 @@ func discardEscapeSequence(reader *bufio.Reader) error {
 func printSessionSummary(out io.Writer, session *Session) {
 	for _, attempt := range session.Attempts() {
 		if !attempt.Correct {
-			fmt.Fprintf(out, "%s%s%s -> %s\n", ansiRed, attempt.Entered, ansiReset, attempt.Target)
+			fmt.Fprintf(out, "%s%s%s -> %s\r\n", ansiRed, attempt.Entered, ansiReset, attempt.Target)
 		}
 	}
 	metrics := session.Metrics(time.Now())
