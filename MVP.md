@@ -201,7 +201,7 @@ buildable and should add or update its acceptance tests.
 - [x] Establish the Go module, timing/session engine, prompt-window planner,
   and append-only terminal renderer.
 - [x] Add the embedded default dictionary and deterministic word selection.
-- [ ] Add CLI configuration for word count, pool, pattern, custom input, seed,
+- [x] Add CLI configuration for word count, pool, pattern, custom input, seed,
   lookahead, timing, penalties, and completion thresholds.
 - [ ] Add session and per-word persistence under the XDG data directory.
 - [ ] Add the post-session missed-word practice round.

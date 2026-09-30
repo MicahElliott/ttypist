@@ -16,6 +16,15 @@ func TestPrintPromptUsesTerminalSafeLineBreaks(t *testing.T) {
 	}
 }
 
+func TestPromptWidthUsesTerminalColumns(t *testing.T) {
+	if got, want := promptWidth(120), 118; got != want {
+		t.Fatalf("prompt width = %d, want %d", got, want)
+	}
+	if got, want := promptWidth(3), 78; got != want {
+		t.Fatalf("narrow-terminal fallback width = %d, want %d", got, want)
+	}
+}
+
 func TestReadInputMapsEditingKeysAndUTF8(t *testing.T) {
 	reader := bufio.NewReader(strings.NewReader("é\b\x17 \r\x03"))
 

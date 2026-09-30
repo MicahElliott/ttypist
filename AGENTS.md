@@ -49,6 +49,10 @@ explicitly asks for an end-to-end MVP pass.
 - Renderer line breaks must be `\r\n`; a bare `\n` can preserve the terminal
   cursor column and indent subsequent scrollback lines. Keep a regression test
   for line-oriented output when changing the renderer.
+- `term.GetSize` returns width before height; preserve that order when deriving
+  the prompt width and verify wide-terminal behavior through a PTY.
+- When all remaining target words fit the current line, keep them in that body
+  instead of creating a final lookahead-only input line.
 
 ## Build and verify
 

@@ -78,6 +78,34 @@ func ParseDictionary(r io.Reader) (Dictionary, error) {
 	return Dictionary{entries: entries}, nil
 }
 
+func ParseDictionaryData(data []byte) (Dictionary, error) {
+	text := string(data)
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.Contains(line, "\t") {
+			return ParseDictionary(strings.NewReader(text))
+		}
+		return ParseWordList(strings.NewReader(text))
+	}
+	return Dictionary{}, nil
+}
+
+func ParseWordList(r io.Reader) (Dictionary, error) {
+	scanner := bufio.NewScanner(r)
+	scanner.Split(bufio.ScanWords)
+	entries := make([]DictionaryEntry, 0)
+	for scanner.Scan() {
+		entries = append(entries, DictionaryEntry{Rank: len(entries) + 1, Word: scanner.Text()})
+	}
+	if err := scanner.Err(); err != nil {
+		return Dictionary{}, err
+	}
+	return Dictionary{entries: entries}, nil
+}
+
 func DefaultDictionary() Dictionary {
 	return defaultDictionary
 }

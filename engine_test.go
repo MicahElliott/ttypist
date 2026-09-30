@@ -112,6 +112,42 @@ func TestPromptRepeatsLookaheadAcrossWindows(t *testing.T) {
 	}
 }
 
+func TestPromptKeepsFinalFittingWordsTogether(t *testing.T) {
+	targets := []string{"when", "this", "made", "while", "from", "however", "some", "between", "now", "world"}
+	first, err := BuildPrompt(targets, 0, 35, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := BuildPrompt(targets, first.BodyEnd, 35, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.BodyEnd != 4 || second.Start != 4 {
+		t.Fatalf("prompt transition = %d -> %d, want 4 -> 4", first.BodyEnd, second.Start)
+	}
+	if len(second.Body) != 6 || len(second.Lookahead) != 0 {
+		t.Fatalf("final body/lookahead = %v/%v, want all six remaining words in body", second.Body, second.Lookahead)
+	}
+	last, err := BuildPrompt(targets, second.BodyEnd, 35, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if last.Start != len(targets) || len(last.Words) != 0 {
+		t.Fatalf("extra final prompt = %+v, want empty prompt after completion", last)
+	}
+}
+
+func TestPromptUsesWholeWideLine(t *testing.T) {
+	targets := []string{"when", "this", "made", "while", "from", "however", "some", "between", "now", "world"}
+	prompt, err := BuildPrompt(targets, 0, 118, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(prompt.Words) != len(targets) || prompt.BodyEnd != len(targets) || len(prompt.Lookahead) != 0 {
+		t.Fatalf("wide prompt = %+v, want all targets in one body", prompt)
+	}
+}
+
 func TestPromptRejectsWordWiderThanTerminal(t *testing.T) {
 	if _, err := BuildPrompt([]string{"this-word-is-too-wide"}, 0, 8, 2); err != ErrWordTooWide {
 		t.Fatalf("error = %v, want ErrWordTooWide", err)

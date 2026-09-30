@@ -145,19 +145,5 @@ func printSummary(attempts []attempt) {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "Must pass an input string of words")
-		os.Exit(1)
-	}
-
-	targets := strings.Fields(os.Args[1])
-	if len(targets) == 0 {
-		fmt.Fprintln(os.Stderr, "Input must contain at least one word")
-		os.Exit(1)
-	}
-
-	if err := runInteractive(targets, os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	os.Exit(runCLI(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

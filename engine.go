@@ -281,13 +281,16 @@ func BuildPrompt(targets []string, start, width, lookahead int) (Prompt, error) 
 		return Prompt{}, ErrWordTooWide
 	}
 
-	overlap := lookahead
-	if overlap >= end-start {
-		overlap = 0
-	}
-	bodyEnd := end - overlap
-	if bodyEnd <= start {
-		bodyEnd = end
+	bodyEnd := end
+	if end < len(targets) {
+		overlap := lookahead
+		if overlap >= end-start {
+			overlap = 0
+		}
+		bodyEnd = end - overlap
+		if bodyEnd <= start {
+			bodyEnd = end
+		}
 	}
 
 	words := append([]string(nil), targets[start:end]...)

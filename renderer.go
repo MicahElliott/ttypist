@@ -21,21 +21,40 @@ const (
 )
 
 var errInputClosed = errors.New("input closed")
+var ErrThresholdNotMet = errors.New("completion threshold not met")
+
+type InteractiveConfig struct {
+	Lookahead   int
+	Timing      TimingConfig
+	MinWPM      float64
+	MinAccuracy float64
+}
+
+func DefaultInteractiveConfig() InteractiveConfig {
+	return InteractiveConfig{Lookahead: 2, Timing: DefaultTimingConfig()}
+}
 
 // runInteractive renders one prompt at a time and leaves completed prompt
 // pairs in terminal scrollback.
 func runInteractive(targets []string, in *os.File, out io.Writer) error {
+	return runInteractiveWithConfig(targets, DefaultInteractiveConfig(), in, out)
+}
+
+func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os.File, out io.Writer) error {
 	if len(targets) == 0 {
 		return errors.New("input must contain at least one word")
 	}
+	if config.Lookahead < 0 {
+		return errors.New("lookahead cannot be negative")
+	}
 
 	width := terminalPromptWidth(out)
-	prompt, err := BuildPrompt(targets, 0, width, 2)
+	prompt, err := BuildPrompt(targets, 0, width, config.Lookahead)
 	if err != nil {
 		return err
 	}
 
-	session := NewSession(targets, DefaultTimingConfig())
+	session := NewSession(targets, config.Timing)
 	oldState, err := term.MakeRaw(int(in.Fd()))
 	if err != nil {
 		return fmt.Errorf("could not switch terminal to raw mode: %w", err)
@@ -71,12 +90,15 @@ func runInteractive(targets []string, in *os.File, out io.Writer) error {
 		if session.Status() == SessionCompleted {
 			fmt.Fprint(out, "\r\n")
 			printSessionSummary(out, session)
+			if err := checkCompletionThresholds(session.Metrics(time.Now()), config); err != nil {
+				return err
+			}
 			return nil
 		}
 
 		if session.FocusIndex() >= prompt.BodyEnd {
 			fmt.Fprint(out, "\r\n")
-			prompt, err = BuildPrompt(targets, prompt.BodyEnd, width, 2)
+			prompt, err = BuildPrompt(targets, prompt.BodyEnd, width, config.Lookahead)
 			if err != nil {
 				return err
 			}
@@ -86,11 +108,32 @@ func runInteractive(targets []string, in *os.File, out io.Writer) error {
 	return nil
 }
 
+func checkCompletionThresholds(metrics Metrics, config InteractiveConfig) error {
+	failures := make([]string, 0, 2)
+	if config.MinWPM > 0 && metrics.PenalizedWPM < config.MinWPM {
+		failures = append(failures, fmt.Sprintf("WPM %.1f is below %.1f", metrics.PenalizedWPM, config.MinWPM))
+	}
+	if config.MinAccuracy > 0 && metrics.Accuracy < config.MinAccuracy {
+		failures = append(failures, fmt.Sprintf("accuracy %.1f%% is below %.1f%%", metrics.Accuracy, config.MinAccuracy))
+	}
+	if len(failures) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%w: %s", ErrThresholdNotMet, strings.Join(failures, "; "))
+}
+
 func terminalPromptWidth(out io.Writer) int {
 	if file, ok := out.(*os.File); ok {
-		if _, columns, err := term.GetSize(int(file.Fd())); err == nil && columns > 4 {
-			return columns - 2 // reserve the two-character prompt prefix
+		if columns, _, err := term.GetSize(int(file.Fd())); err == nil {
+			return promptWidth(columns)
 		}
+	}
+	return 78
+}
+
+func promptWidth(columns int) int {
+	if columns > 4 {
+		return columns - 2 // reserve the two-character prompt prefix
 	}
 	return 78
 }
