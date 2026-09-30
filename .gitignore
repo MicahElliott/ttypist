@@ -1,0 +1,12 @@
+# Local build artifacts
+/ttypist
+/coverage.out
+*.test
+*.prof
+
+# Harness-local session transcripts
+/.agent-shell/
+
+# Editor and OS noise
+.DS_Store
+*.swp
