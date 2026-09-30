@@ -72,5 +72,5 @@ PTY, including the relevant editing or quit path. Use engine tests for exact
 timing and layout assertions; use the PTY session to catch cursor, redraw, raw
 mode, and scrollback problems.
 
-The main implementation is currently in `engine.go`, `renderer.go`, and
-`tt3.go`; their behavior is covered by `*_test.go` files.
+The main implementation is currently in `engine.go`, `renderer.go`, `cli.go`,
+and `main.go`; their behavior is covered by `*_test.go` files.

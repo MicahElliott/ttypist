@@ -35,6 +35,15 @@ of:
 
 - display one line at a time
 
+## Historical seed
+
+The initial Go prototype was committed as `tt3.go`. The active entry point
+now lives in `main.go`; the original seed remains recoverable from Git with:
+
+```sh
+git show e9241bc:tt3.go > tt3.go
+```
+
 ## Example session in zyping
 
 ```
