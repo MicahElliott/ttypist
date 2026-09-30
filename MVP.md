@@ -193,6 +193,26 @@ end the session.
 Given the same dictionary, selection configuration, and seed, two sessions
 produce the same target sequence.
 
+## Implementation sequence
+
+Complete these as small vertical slices. Each slice should leave the program
+buildable and should add or update its acceptance tests.
+
+- [x] Establish the Go module, timing/session engine, prompt-window planner,
+  and append-only terminal renderer.
+- [ ] Add the embedded default dictionary and deterministic word selection.
+- [ ] Add CLI configuration for word count, pool, pattern, custom input, seed,
+  lookahead, timing, penalties, and completion thresholds.
+- [ ] Add session and per-word persistence under the XDG data directory.
+- [ ] Add the post-session missed-word practice round.
+- [ ] Add `stats` with recent sessions and hardest words.
+- [ ] Add PTY coverage for completion, `Ctrl-C`, terminal restoration, and
+  prompt advancement.
+- [ ] Recheck the release gate and document the finished command examples.
+
+The keybr, work-up, keyboard-pattern, and longest-word activities come after
+the MVP release gate and reuse the same session engine.
+
 ## Release gate
 
 The MVP is ready when a user can run a normal session from a fresh checkout,
