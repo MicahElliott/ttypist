@@ -229,79 +229,46 @@ func (s *Session) Metrics(now time.Time) Metrics {
 	return m
 }
 
-type Prompt struct {
-	Start     int
-	BodyEnd   int
-	End       int
-	Words     []string
-	Body      []string
-	Lookahead []string
+type ParagraphLine struct {
+	Start int
+	End   int
 }
 
-// BuildPrompt returns a terminal-width prompt window. BodyEnd is the logical
-// index at which the next window starts; the words between BodyEnd and End are
-// lookahead and will be repeated visually in that next window.
-func BuildPrompt(targets []string, start, width, lookahead int) (Prompt, error) {
-	if start < 0 {
-		start = 0
-	}
-	if start > len(targets) {
-		start = len(targets)
-	}
+type Paragraph struct {
+	Lines []ParagraphLine
+}
+
+// BuildParagraph wraps the complete target sequence once. The renderer uses
+// the same word ranges for the static target text and the live input lines.
+func BuildParagraph(targets []string, width int) (Paragraph, error) {
 	if width < 1 {
 		width = 1
 	}
-	if lookahead < 0 {
-		lookahead = 0
-	}
-	if start == len(targets) {
-		return Prompt{Start: start, BodyEnd: start, End: start}, nil
-	}
-	for _, target := range targets[start:] {
+	for _, target := range targets {
 		if utf8.RuneCountInString(target) > width {
-			return Prompt{}, ErrWordTooWide
+			return Paragraph{}, ErrWordTooWide
 		}
 	}
 
-	end := start
+	paragraph := Paragraph{}
+	start := 0
 	lineWidth := 0
-	for end < len(targets) {
-		wordWidth := utf8.RuneCountInString(targets[end])
+	for end, target := range targets {
+		wordWidth := utf8.RuneCountInString(target)
 		nextWidth := wordWidth
 		if end > start {
-			nextWidth++ // separating space
+			nextWidth++
 		}
 		if end > start && lineWidth+nextWidth > width {
-			break
+			paragraph.Lines = append(paragraph.Lines, ParagraphLine{Start: start, End: end})
+			start = end
+			lineWidth = wordWidth
+			continue
 		}
 		lineWidth += nextWidth
-		end++
 	}
-	if end == start {
-		return Prompt{}, ErrWordTooWide
+	if start < len(targets) {
+		paragraph.Lines = append(paragraph.Lines, ParagraphLine{Start: start, End: len(targets)})
 	}
-
-	bodyEnd := end
-	if end < len(targets) {
-		overlap := lookahead
-		if overlap >= end-start {
-			overlap = 0
-		}
-		bodyEnd = end - overlap
-		if bodyEnd <= start {
-			bodyEnd = end
-		}
-	}
-
-	words := append([]string(nil), targets[start:end]...)
-	body := append([]string(nil), targets[start:bodyEnd]...)
-	trailing := append([]string(nil), targets[bodyEnd:end]...)
-	return Prompt{
-		Start:     start,
-		BodyEnd:   bodyEnd,
-		End:       end,
-		Words:     words,
-		Body:      body,
-		Lookahead: trailing,
-	}, nil
+	return paragraph, nil
 }

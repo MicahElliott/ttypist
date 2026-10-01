@@ -19,7 +19,6 @@ type cliOptions struct {
 	dictionaryPath string
 	inputPath      string
 	seed           int64
-	lookahead      int
 	slowPerRuneMS  int
 	targetWPM      float64
 	penaltySeconds float64
@@ -32,7 +31,6 @@ func defaultCLIOptions() cliOptions {
 		nwords:         50,
 		pool:           "1-200",
 		seed:           0,
-		lookahead:      2,
 		slowPerRuneMS:  250,
 		penaltySeconds: 1,
 	}
@@ -58,7 +56,6 @@ func parseCLIArgs(args []string, stderr io.Writer) (cliOptions, []string, error)
 	flags.StringVar(&options.dictionaryPath, "dict", "", "custom dictionary file")
 	flags.StringVar(&options.inputPath, "input", "", "file containing the target text")
 	flags.Int64Var(&options.seed, "seed", options.seed, "random selection seed")
-	flags.IntVar(&options.lookahead, "lookahead", options.lookahead, "number of lookahead words")
 	flags.IntVar(&options.slowPerRuneMS, "slow-ms-per-rune", options.slowPerRuneMS, "slow-word threshold in milliseconds per target rune")
 	flags.Float64Var(&options.targetWPM, "target-wpm", 0, "target WPM used to derive the slow-word threshold")
 	flags.Float64Var(&options.penaltySeconds, "penalty-seconds", options.penaltySeconds, "penalty added to elapsed time per incorrect word")
@@ -70,9 +67,6 @@ func parseCLIArgs(args []string, stderr io.Writer) (cliOptions, []string, error)
 	}
 	if options.nwords < 1 {
 		return cliOptions{}, nil, errors.New("--nwords must be positive")
-	}
-	if options.lookahead < 0 {
-		return cliOptions{}, nil, errors.New("--lookahead cannot be negative")
 	}
 	if options.slowPerRuneMS < 1 {
 		return cliOptions{}, nil, errors.New("--slow-ms-per-rune must be positive")
@@ -186,7 +180,6 @@ func runCLI(args []string, in *os.File, out, stderr io.Writer) int {
 		return 1
 	}
 	config := InteractiveConfig{
-		Lookahead: options.lookahead,
 		Timing: TimingConfig{
 			SlowPerRune: time.Duration(options.slowPerRuneMS) * time.Millisecond,
 			TargetWPM:   options.targetWPM,

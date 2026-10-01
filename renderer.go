@@ -24,18 +24,17 @@ var errInputClosed = errors.New("input closed")
 var ErrThresholdNotMet = errors.New("completion threshold not met")
 
 type InteractiveConfig struct {
-	Lookahead   int
 	Timing      TimingConfig
 	MinWPM      float64
 	MinAccuracy float64
 }
 
 func DefaultInteractiveConfig() InteractiveConfig {
-	return InteractiveConfig{Lookahead: 2, Timing: DefaultTimingConfig()}
+	return InteractiveConfig{Timing: DefaultTimingConfig()}
 }
 
-// runInteractive renders one prompt at a time and leaves completed prompt
-// pairs in terminal scrollback.
+// runInteractive renders a static target paragraph followed by append-only
+// input lines that use the same word breaks.
 func runInteractive(targets []string, in *os.File, out io.Writer) error {
 	return runInteractiveWithConfig(targets, DefaultInteractiveConfig(), in, out)
 }
@@ -44,12 +43,8 @@ func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os
 	if len(targets) == 0 {
 		return errors.New("input must contain at least one word")
 	}
-	if config.Lookahead < 0 {
-		return errors.New("lookahead cannot be negative")
-	}
-
 	width := terminalPromptWidth(out)
-	prompt, err := BuildPrompt(targets, 0, width, config.Lookahead)
+	paragraph, err := BuildParagraph(targets, width)
 	if err != nil {
 		return err
 	}
@@ -62,7 +57,9 @@ func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os
 	defer term.Restore(int(in.Fd()), oldState)
 
 	fmt.Fprint(out, "Start typing to begin test, Ctrl-C to exit.\r\n")
-	printPrompt(out, prompt)
+	printTargetParagraph(out, targets, paragraph)
+	fmt.Fprint(out, "> ")
+	lineIndex := 0
 
 	reader := bufio.NewReader(in)
 	for session.Status() == SessionActive {
@@ -86,7 +83,8 @@ func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os
 			return nil
 		}
 
-		printInputLine(out, session, prompt)
+		line := paragraph.Lines[lineIndex]
+		printInputLine(out, session, line)
 		if session.Status() == SessionCompleted {
 			fmt.Fprint(out, "\r\n")
 			printSessionSummary(out, session)
@@ -96,13 +94,10 @@ func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os
 			return nil
 		}
 
-		if session.FocusIndex() >= prompt.BodyEnd {
+		if session.FocusIndex() >= line.End {
 			fmt.Fprint(out, "\r\n")
-			prompt, err = BuildPrompt(targets, prompt.BodyEnd, width, config.Lookahead)
-			if err != nil {
-				return err
-			}
-			printPrompt(out, prompt)
+			lineIndex++
+			fmt.Fprint(out, "> ")
 		}
 	}
 	return nil
@@ -138,14 +133,16 @@ func promptWidth(columns int) int {
 	return 78
 }
 
-func printPrompt(out io.Writer, prompt Prompt) {
-	fmt.Fprintf(out, "  %s\r\n> ", strings.Join(prompt.Words, " "))
+func printTargetParagraph(out io.Writer, targets []string, paragraph Paragraph) {
+	for _, line := range paragraph.Lines {
+		fmt.Fprintf(out, "  %s\r\n", strings.Join(targets[line.Start:line.End], " "))
+	}
 }
 
-func printInputLine(out io.Writer, session *Session, prompt Prompt) {
+func printInputLine(out io.Writer, session *Session, line ParagraphLine) {
 	fmt.Fprintf(out, "\r%s> ", ansiClear)
 	for _, attempt := range session.Attempts() {
-		if attempt.TargetIdx < prompt.Start || attempt.TargetIdx >= prompt.BodyEnd {
+		if attempt.TargetIdx < line.Start || attempt.TargetIdx >= line.End {
 			continue
 		}
 		color := ansiGreen

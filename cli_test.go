@@ -12,7 +12,7 @@ import (
 func TestParseCLIArgsSupportsRunConfiguration(t *testing.T) {
 	options, positional, err := parseCLIArgs([]string{
 		"run", "--nwords", "7", "--pool", "3-9", "--pattern", "^[a-z]+$",
-		"--seed", "1234", "--lookahead", "4", "--slow-ms-per-rune", "300",
+		"--seed", "1234", "--slow-ms-per-rune", "300",
 		"--target-wpm", "50", "--penalty-seconds", "2", "--min-wpm", "40",
 		"--min-accuracy", "92", "one", "two",
 	}, io.Discard)
@@ -23,7 +23,6 @@ func TestParseCLIArgsSupportsRunConfiguration(t *testing.T) {
 		nwords:         7,
 		pool:           "3-9",
 		seed:           1234,
-		lookahead:      4,
 		slowPerRuneMS:  300,
 		targetWPM:      50,
 		penaltySeconds: 2,
@@ -102,7 +101,7 @@ func TestCompletionThresholds(t *testing.T) {
 
 func reflectCLIOptions(got, want cliOptions) bool {
 	return got.nwords == want.nwords && got.pool == want.pool && got.seed == want.seed &&
-		got.lookahead == want.lookahead && got.slowPerRuneMS == want.slowPerRuneMS &&
+		got.slowPerRuneMS == want.slowPerRuneMS &&
 		got.targetWPM == want.targetWPM && got.penaltySeconds == want.penaltySeconds &&
 		got.minWPM == want.minWPM && got.minAccuracy == want.minAccuracy
 }

@@ -91,65 +91,36 @@ func TestIncorrectWordAdvances(t *testing.T) {
 	}
 }
 
-func TestPromptRepeatsLookaheadAcrossWindows(t *testing.T) {
-	targets := []string{"always", "man", "good", "same", "from", "going", "most", "after", "made", "again", "small", "which", "day", "first", "next"}
-	first, err := BuildPrompt(targets, 0, 75, 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if first.BodyEnd != 12 || first.End != 14 {
-		t.Fatalf("first prompt = %+v, want body end 12 and end 14", first)
-	}
-	if got := first.Lookahead; len(got) != 2 || got[0] != "day" || got[1] != "first" {
-		t.Fatalf("first lookahead = %v, want [day first]", got)
-	}
-	second, err := BuildPrompt(targets, first.BodyEnd, 75, 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(second.Words) == 0 || second.Words[0] != "day" || second.Words[1] != "first" {
-		t.Fatalf("second words = %v, want to begin with [day first]", second.Words)
-	}
-}
-
-func TestPromptKeepsFinalFittingWordsTogether(t *testing.T) {
+func TestParagraphUsesWholeLinesAndKeepsFinalWordsTogether(t *testing.T) {
 	targets := []string{"when", "this", "made", "while", "from", "however", "some", "between", "now", "world"}
-	first, err := BuildPrompt(targets, 0, 35, 2)
+	paragraph, err := BuildParagraph(targets, 35)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := BuildPrompt(targets, first.BodyEnd, 35, 2)
-	if err != nil {
-		t.Fatal(err)
+	if len(paragraph.Lines) != 2 {
+		t.Fatalf("paragraph lines = %+v, want two lines", paragraph.Lines)
 	}
-	if first.BodyEnd != 4 || second.Start != 4 {
-		t.Fatalf("prompt transition = %d -> %d, want 4 -> 4", first.BodyEnd, second.Start)
+	if got, want := paragraph.Lines[0], (ParagraphLine{Start: 0, End: 6}); got != want {
+		t.Fatalf("first line = %+v, want %+v", got, want)
 	}
-	if len(second.Body) != 6 || len(second.Lookahead) != 0 {
-		t.Fatalf("final body/lookahead = %v/%v, want all six remaining words in body", second.Body, second.Lookahead)
-	}
-	last, err := BuildPrompt(targets, second.BodyEnd, 35, 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if last.Start != len(targets) || len(last.Words) != 0 {
-		t.Fatalf("extra final prompt = %+v, want empty prompt after completion", last)
+	if got, want := paragraph.Lines[1], (ParagraphLine{Start: 6, End: 10}); got != want {
+		t.Fatalf("last line = %+v, want %+v", got, want)
 	}
 }
 
-func TestPromptUsesWholeWideLine(t *testing.T) {
+func TestParagraphUsesWholeWideLine(t *testing.T) {
 	targets := []string{"when", "this", "made", "while", "from", "however", "some", "between", "now", "world"}
-	prompt, err := BuildPrompt(targets, 0, 118, 2)
+	paragraph, err := BuildParagraph(targets, 118)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(prompt.Words) != len(targets) || prompt.BodyEnd != len(targets) || len(prompt.Lookahead) != 0 {
-		t.Fatalf("wide prompt = %+v, want all targets in one body", prompt)
+	if len(paragraph.Lines) != 1 || paragraph.Lines[0] != (ParagraphLine{Start: 0, End: len(targets)}) {
+		t.Fatalf("wide paragraph = %+v, want all targets in one line", paragraph)
 	}
 }
 
-func TestPromptRejectsWordWiderThanTerminal(t *testing.T) {
-	if _, err := BuildPrompt([]string{"this-word-is-too-wide"}, 0, 8, 2); err != ErrWordTooWide {
+func TestParagraphRejectsWordWiderThanTerminal(t *testing.T) {
+	if _, err := BuildParagraph([]string{"this-word-is-too-wide"}, 8); err != ErrWordTooWide {
 		t.Fatalf("error = %v, want ErrWordTooWide", err)
 	}
 }

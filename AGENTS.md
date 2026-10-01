@@ -19,8 +19,8 @@ message speculatively before final confirmation. Do not commit automatically.
 ## Project intent
 
 Ttypist is a small Go terminal typing tutor that recreates the useful core of
-`../zyping/bin/ttypist` while adding reliable per-word timing, rolling prompts,
-and local progress statistics. Read `design.md` for the original vision and
+`../zyping/bin/ttypist` while adding reliable per-word timing, paragraph
+alignment, and local progress statistics. Read `design.md` for the original vision and
 `MVP.md` for the current scope and acceptance contract.
 
 Keep dependencies and implementation small. Treat `MVP.md` and its executable
@@ -35,11 +35,10 @@ explicitly asks for an end-to-end MVP pass.
 ## Interaction rules
 
 - Treat the exercise as one logical sequence of target words.
-- Fit each prompt to terminal width. Show one current target line and its input
-  line; do not reveal several future prompt lines.
-- Each prompt has a body plus two lookahead words by default. Lookahead repeats
-  visually in the next prompt but creates no duplicate attempts.
-- Leave completed target/input pairs in terminal scrollback.
+- Wrap the complete target paragraph to terminal width before typing begins.
+- Keep the target paragraph static. Append input lines using the same word
+  breaks, and redraw only the current input line while it is being edited.
+- Leave completed input lines in terminal scrollback.
 - Space commits a word. Return is ignored. Backspace removes one character;
   `Ctrl-W` clears the current uncommitted word; `Ctrl-C` exits cleanly.
 - Start a word timer with its first printable rune and include correction time.
@@ -51,8 +50,8 @@ explicitly asks for an end-to-end MVP pass.
   for line-oriented output when changing the renderer.
 - `term.GetSize` returns width before height; preserve that order when deriving
   the prompt width and verify wide-terminal behavior through a PTY.
-- When all remaining target words fit the current line, keep them in that body
-  instead of creating a final lookahead-only input line.
+- Add the next input line only after the committed word reaches the next
+  precomputed paragraph break; do not create an extra final input line.
 
 ## Build and verify
 

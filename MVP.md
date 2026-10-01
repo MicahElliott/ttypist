@@ -4,14 +4,14 @@ Status: draft
 
 Ttypist is a local, single-user terminal typing tutor. Its first release should
 replace the main `zyping/bin/ttypist` workflow while adding reliable per-word
-timing and a rolling, line-oriented display.
+timing and a paragraph-aligned, line-oriented display.
 
 ## Product boundary
 
 The MVP includes:
 
 - one interactive typing session over a selected sequence of words;
-- terminal-width rendering with a two-word lookahead by default;
+- terminal-width rendering with a static target paragraph and aligned input;
 - printable input, Backspace, `Ctrl-W`, `Ctrl-C`, and clean terminal restore;
 - per-word elapsed time, correctness, slow-word coloring, and session timing;
 - WPM, raw WPM, accuracy, missed-word pairs, and a post-session missed-word
@@ -29,34 +29,22 @@ should be able to use the same session engine later.
 
 ## Interaction contract
 
-The exercise is a single logical sequence of target words. The renderer shows
-one prompt window at a time. Each window contains:
-
-1. a body of words that the user will type before the next redraw; and
-2. a small lookahead, initially two words, that gives the user a view of what
-   is coming next.
-
-For example, a prompt may show:
+The exercise is a single logical sequence of target words. The renderer wraps
+the complete target paragraph before typing begins and uses those same word
+breaks for the input lines:
 
 ```text
-  always man good same from going most after made again small which day first
-> 
+  when this made while from however
+  some between now world
+
+> when this made while from however
+  some between now world
 ```
 
-The body ends at `which`; `day first` are lookahead words. After the user
-commits `which `, the next prompt begins with `day first` and appends newly
-selected words. The user continues typing without pressing Return. The
-lookahead words are displayed twice across the redraw but are attempted once.
-
-The body and lookahead are chosen to fit the terminal width. A word is never
-split across lines. If the next word would flirt with the right edge, it moves
-to the next prompt window. The renderer keeps the input cursor directly below
-the current focus word.
-
-Completed target/input pairs remain in terminal scrollback. When the current
-body is complete, the renderer appends exactly one new target line and one new
-input line below the history. It does not reveal several future prompt lines
-at once. The engine remains independent of terminal escape sequences.
+The target paragraph remains unchanged. The current input line is redrawn as
+the user types; after the final word on a line is committed, the renderer
+appends exactly one new input line. A word is never split across lines, and the
+engine remains independent of terminal escape sequences.
 
 Space commits the current word. A committed word advances the focus and
 records its result. A word is correct when its entered text exactly matches the
@@ -105,7 +93,6 @@ ttypist run
   --dict path/to/words
   --input path/to/text
   --seed 1234
-  --lookahead 2
   --slow-ms-per-rune 250
   --target-wpm 50
   --penalty-seconds 1
@@ -172,11 +159,11 @@ the attempt correct.
 Given target `which`, the events `w h o Space` record entered text `who`, mark
 the attempt incorrect, and advance to the next target.
 
-### Rolling prompt
+### Paragraph layout
 
-Given a terminal width and a two-word lookahead, the renderer exposes the same
-logical lookahead words at the end of one prompt and the beginning of the next,
-while the engine creates only one attempt for each logical target word.
+Given a terminal width, the renderer wraps all target words once, prints the
+target paragraph before input begins, and uses the same word ranges for the
+input lines without duplicating attempts.
 
 ### Quit safety
 
@@ -202,7 +189,7 @@ buildable and should add or update its acceptance tests.
   and append-only terminal renderer.
 - [x] Add the embedded default dictionary and deterministic word selection.
 - [x] Add CLI configuration for word count, pool, pattern, custom input, seed,
-  lookahead, timing, penalties, and completion thresholds.
+  timing, penalties, and completion thresholds.
 - [ ] Add session and per-word persistence under the XDG data directory.
 - [ ] Add the post-session missed-word practice round.
 - [ ] Add `stats` with recent sessions and hardest words.
@@ -216,7 +203,7 @@ the MVP release gate and reuse the same session engine.
 ## Release gate
 
 The MVP is ready when a user can run a normal session from a fresh checkout,
-complete it in a typical 80-column terminal, see the rolling prompts and
+complete it in a typical 80-column terminal, see the static target paragraph and
 per-word colors, review metrics, practice misses, restart the program, and see
 the resulting session in `stats`. The engine tests pass, and a PTY smoke test
 verifies terminal restoration on completion and `Ctrl-C`.

@@ -8,10 +8,10 @@ import (
 	"time"
 )
 
-func TestPrintPromptUsesTerminalSafeLineBreaks(t *testing.T) {
+func TestPrintTargetParagraphUsesTerminalSafeLineBreaks(t *testing.T) {
 	var output bytes.Buffer
-	printPrompt(&output, Prompt{Words: []string{"two", "three"}})
-	if got, want := output.String(), "  two three\r\n> "; got != want {
+	printTargetParagraph(&output, []string{"two", "three", "four"}, Paragraph{Lines: []ParagraphLine{{Start: 0, End: 2}, {Start: 2, End: 3}}})
+	if got, want := output.String(), "  two three\r\n  four\r\n"; got != want {
 		t.Fatalf("prompt output = %q, want %q", got, want)
 	}
 }

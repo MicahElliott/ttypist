@@ -30,10 +30,11 @@ to figure out how I could possibly do individual word timing with the way its
 loops work. So I decided to recreate much of it in Go, which is this Ttypist
 project.
 
-I think the simplest way to make Ttypist work well is by sticking to the model
-of:
-
-- display one line at a time
+I think the simplest way to make Ttypist work well is by displaying the
+complete target paragraph up front, then typing through an input paragraph
+that uses the same word breaks. The target text stays static; only the current
+input line is redrawn, and a new input line is appended when the last word on
+the current paragraph line is committed.
 
 ## Historical seed
 
