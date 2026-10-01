@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"golang.org/x/term"
 )
@@ -16,6 +17,7 @@ const (
 	ansiRed    = "\x1b[31m"
 	ansiGreen  = "\x1b[32m"
 	ansiYellow = "\x1b[33m"
+	ansiBold   = "\x1b[1m"
 	ansiReset  = "\x1b[0m"
 	ansiClear  = "\x1b[2K"
 )
@@ -56,9 +58,9 @@ func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os
 	}
 	defer term.Restore(int(in.Fd()), oldState)
 
-	fmt.Fprint(out, "Start typing to begin test, Ctrl-C to exit.\r\n")
+	fmt.Fprint(out, "Start typing to begin test, Ctrl-C to exit.\r\n\r\n")
 	printTargetParagraph(out, targets, paragraph)
-	fmt.Fprint(out, "> ")
+	fmt.Fprint(out, "\r\n> ")
 	lineIndex := 0
 
 	reader := bufio.NewReader(in)
@@ -135,7 +137,7 @@ func promptWidth(columns int) int {
 
 func printTargetParagraph(out io.Writer, targets []string, paragraph Paragraph) {
 	for _, line := range paragraph.Lines {
-		fmt.Fprintf(out, "  %s\r\n", strings.Join(targets[line.Start:line.End], " "))
+		fmt.Fprintf(out, "  %s%s%s\r\n", ansiBold, strings.Join(targets[line.Start:line.End], " "), ansiReset)
 	}
 }
 
@@ -203,17 +205,59 @@ func discardEscapeSequence(reader *bufio.Reader) error {
 }
 
 func printSessionSummary(out io.Writer, session *Session) {
-	for _, attempt := range session.Attempts() {
+	fmt.Fprint(out, "\r\n")
+	attempts := session.Attempts()
+	misses := make([]Attempt, 0)
+	slow := make([]Attempt, 0)
+	maxMissedWidth := 0
+	for _, attempt := range attempts {
 		if !attempt.Correct {
-			fmt.Fprintf(out, "%s%s%s -> %s\r\n", ansiRed, attempt.Entered, ansiReset, attempt.Target)
+			misses = append(misses, attempt)
+			if width := utf8.RuneCountInString(attempt.Entered); width > maxMissedWidth {
+				maxMissedWidth = width
+			}
+		}
+		if attempt.Slow {
+			slow = append(slow, attempt)
 		}
 	}
+	if len(misses) > 0 {
+		fmt.Fprint(out, "Missed:\r\n")
+		for _, attempt := range misses {
+			entered := padRight(attempt.Entered, maxMissedWidth)
+			fmt.Fprintf(out, "%s%s%s -> %s\r\n", ansiRed, entered, ansiReset, attempt.Target)
+		}
+	}
+	if len(slow) > 0 {
+		if len(misses) > 0 {
+			fmt.Fprint(out, "\r\n")
+		}
+		fmt.Fprint(out, "Slow:\r\n")
+		words := make([]string, 0, len(slow))
+		for _, attempt := range slow {
+			word := attempt.Target
+			if !attempt.Correct {
+				word = attempt.Entered
+			}
+			words = append(words, fmt.Sprintf("%s(%d)", word, attempt.Duration.Milliseconds()))
+		}
+		fmt.Fprintf(out, "%s\r\n", strings.Join(words, " "))
+	}
+	fmt.Fprint(out, "\r\n")
 	metrics := session.Metrics(time.Now())
 	status := "Test"
 	if session.Status() == SessionAborted {
 		status = "Interrupted test"
 	}
-	fmt.Fprintf(out, "\r\n%s of %d words took %d seconds.\r\n", status, metrics.Attempted, int(metrics.Elapsed.Round(time.Second).Seconds()))
+	fmt.Fprintf(out, "%s of %d words took %d seconds.\r\n", status, metrics.Attempted, int(metrics.Elapsed.Round(time.Second).Seconds()))
 	fmt.Fprintf(out, "WPM: %.1f (raw: %.1f)\r\n", metrics.PenalizedWPM, metrics.RawWPM)
 	fmt.Fprintf(out, "Acc: %.0f%% (%d/%d)\r\n", metrics.Accuracy, metrics.Correct, metrics.Attempted)
+}
+
+func padRight(value string, width int) string {
+	padding := width - utf8.RuneCountInString(value)
+	if padding <= 0 {
+		return value
+	}
+	return value + strings.Repeat(" ", padding)
 }

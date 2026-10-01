@@ -129,6 +129,12 @@ WPM: 73.7 (raw: 79.2)
 Acc: 94% (47/50)
 ```
 
+When timing crosses the configured slow-word threshold, the summary also
+shows a `Slow` section with each affected word and its elapsed milliseconds.
+Incorrect words use the entered text in that section; correct words use the
+target text. Slow correct words remain visibly distinct from incorrect words
+while typing.
+
 The missed-word practice round presents target words repeatedly in a free-form
 line. It is untimed and can be ended early.
 
