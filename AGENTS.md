@@ -72,4 +72,5 @@ timing and layout assertions; use the PTY session to catch cursor, redraw, raw
 mode, and scrollback problems.
 
 The main implementation is currently in `engine.go`, `renderer.go`, `cli.go`,
-and `main.go`; their behavior is covered by `*_test.go` files.
+`persistence.go`, and `main.go`; their behavior is covered by `*_test.go`
+files.

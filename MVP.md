@@ -106,11 +106,12 @@ default word list is outside this MVP.
 
 ## Persistence and stats
 
-The MVP uses one local data store selected through the normal XDG data
-location. It records session configuration and outcome, plus each attempted
-word, entered text, correctness, timing, and activity metadata. The schema
-should leave room for later courses and activities without requiring those
-features now.
+The MVP uses an append-only JSONL data store at
+`$XDG_DATA_HOME/ttypist/sessions.jsonl`, falling back to
+`~/.local/share/ttypist/sessions.jsonl`. It records session configuration and
+outcome, plus each attempted word, entered text, correctness, timing, and
+activity metadata. The schema should leave room for later courses and
+activities without requiring those features now.
 
 `ttypist stats` should show recent session results and the most frequently
 missed target words. A compact built-in terminal graph is sufficient; an
@@ -191,12 +192,12 @@ produce the same target sequence.
 Complete these as small vertical slices. Each slice should leave the program
 buildable and should add or update its acceptance tests.
 
-- [x] Establish the Go module, timing/session engine, prompt-window planner,
+- [x] Establish the Go module, timing/session engine, paragraph planner,
   and append-only terminal renderer.
 - [x] Add the embedded default dictionary and deterministic word selection.
 - [x] Add CLI configuration for word count, pool, pattern, custom input, seed,
   timing, penalties, and completion thresholds.
-- [ ] Add session and per-word persistence under the XDG data directory.
+- [x] Add session and per-word persistence under the XDG data directory.
 - [ ] Add the post-session missed-word practice round.
 - [ ] Add `stats` with recent sessions and hardest words.
 - [ ] Add PTY coverage for completion, `Ctrl-C`, terminal restoration, and

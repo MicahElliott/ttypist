@@ -19,6 +19,7 @@ type cliOptions struct {
 	dictionaryPath string
 	inputPath      string
 	seed           int64
+	patternText    string
 	slowPerRuneMS  int
 	targetWPM      float64
 	penaltySeconds float64
@@ -79,6 +80,7 @@ func parseCLIArgs(args []string, stderr io.Writer) (cliOptions, []string, error)
 		return cliOptions{}, nil, fmt.Errorf("invalid --pattern: %w", err)
 	}
 	options.pattern = compiledPattern
+	options.patternText = pattern
 	if _, _, err := parsePool(options.pool); err != nil {
 		return cliOptions{}, nil, err
 	}
@@ -180,6 +182,14 @@ func runCLI(args []string, in *os.File, out, stderr io.Writer) int {
 		return 1
 	}
 	config := InteractiveConfig{
+		Selection: SessionSelection{
+			Count:      options.nwords,
+			Pool:       options.pool,
+			Pattern:    options.patternText,
+			Dictionary: options.dictionaryPath,
+			Input:      options.inputPath,
+			Seed:       options.seed,
+		},
 		Timing: TimingConfig{
 			SlowPerRune: time.Duration(options.slowPerRuneMS) * time.Millisecond,
 			TargetWPM:   options.targetWPM,

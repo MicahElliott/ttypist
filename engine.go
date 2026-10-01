@@ -176,6 +176,10 @@ func (s *Session) Attempts() []Attempt {
 	return append([]Attempt(nil), s.attempts...)
 }
 
+func (s *Session) StartedAt() time.Time { return s.sessionStarted }
+
+func (s *Session) EndedAt() time.Time { return s.endedAt }
+
 type Metrics struct {
 	Elapsed      time.Duration
 	RawWPM       float64

@@ -29,6 +29,8 @@ type InteractiveConfig struct {
 	Timing      TimingConfig
 	MinWPM      float64
 	MinAccuracy float64
+	Selection   SessionSelection
+	Store       SessionStore
 }
 
 func DefaultInteractiveConfig() InteractiveConfig {
@@ -50,6 +52,10 @@ func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os
 	if err != nil {
 		return err
 	}
+	store, err := sessionStore(config.Store)
+	if err != nil {
+		return err
+	}
 
 	session := NewSession(targets, config.Timing)
 	oldState, err := term.MakeRaw(int(in.Fd()))
@@ -68,6 +74,10 @@ func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os
 		input, ok, err := readInput(reader)
 		if err != nil {
 			if errors.Is(err, errInputClosed) {
+				session.abort(time.Now())
+				if err := persistSession(store, session, config); err != nil {
+					return err
+				}
 				return nil
 			}
 			return err
@@ -82,6 +92,9 @@ func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os
 		if input.Kind == InputCtrlC {
 			fmt.Fprint(out, "\r\n")
 			printSessionSummary(out, session)
+			if err := persistSession(store, session, config); err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -90,6 +103,9 @@ func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os
 		if session.Status() == SessionCompleted {
 			fmt.Fprint(out, "\r\n")
 			printSessionSummary(out, session)
+			if err := persistSession(store, session, config); err != nil {
+				return err
+			}
 			if err := checkCompletionThresholds(session.Metrics(time.Now()), config); err != nil {
 				return err
 			}
@@ -103,6 +119,24 @@ func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os
 		}
 	}
 	return nil
+}
+
+func sessionStore(store SessionStore) (SessionStore, error) {
+	if store != nil {
+		return store, nil
+	}
+	path, err := DefaultSessionStorePath()
+	if err != nil {
+		return nil, err
+	}
+	return FileSessionStore{Path: path}, nil
+}
+
+func persistSession(store SessionStore, session *Session, config InteractiveConfig) error {
+	if session.Status() != SessionCompleted && len(session.Attempts()) == 0 {
+		return nil
+	}
+	return store.Save(session.Record(config, time.Now()))
 }
 
 func checkCompletionThresholds(metrics Metrics, config InteractiveConfig) error {
