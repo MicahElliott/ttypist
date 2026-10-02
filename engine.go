@@ -6,7 +6,7 @@ import (
 	"unicode/utf8"
 )
 
-const defaultSlowPerRune = 250 * time.Millisecond
+const defaultSlowPerRune = 150 * time.Millisecond
 
 var ErrSessionNotActive = errors.New("typing session is not active")
 var ErrWordTooWide = errors.New("word is wider than the available prompt")

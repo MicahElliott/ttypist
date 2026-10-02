@@ -159,3 +159,9 @@ func TestTargetWPMOverridesPerRuneThreshold(t *testing.T) {
 		t.Fatalf("threshold = %s, want %s", got, want)
 	}
 }
+
+func TestDefaultTimingUsesTighterSlowThreshold(t *testing.T) {
+	if got, want := DefaultTimingConfig().SlowPerRune, 150*time.Millisecond; got != want {
+		t.Fatalf("default slow threshold = %s, want %s", got, want)
+	}
+}

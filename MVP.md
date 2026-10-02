@@ -64,8 +64,8 @@ session when it contains attempts.
 
 ## Timing and metrics
 
-The slow-word threshold is configurable. The first default is equivalent to
-250 milliseconds per target rune, matching the existing Go spike. The CLI
+The slow-word threshold is configurable. The default is 150 milliseconds per
+target rune. The CLI
 should also support a target-WPM setting that derives the threshold from the
 target word length. The selected threshold and timing mode belong in the saved
 session metadata.
@@ -94,12 +94,16 @@ ttypist run
   --dict path/to/words
   --input path/to/text
   --seed 1234
-  --slow-ms-per-rune 250
+  --slow-ms-per-rune 150
   --target-wpm 50
   --penalty-seconds 1
   --min-wpm 50
   --min-accuracy 92
 ```
+
+The CLI generates a random seed when `--seed` is omitted. Pass a fixed value,
+such as `--seed 1234`, when a repeatable word sequence is useful for debugging
+or practice.
 
 The default word list is the existing `10k-3.num` data file embedded in the
 binary. A custom dictionary or input source can override it. Editing the
@@ -132,8 +136,8 @@ Acc: 94% (47/50)
 ```
 
 When timing crosses the configured slow-word threshold, the summary also
-shows a `Slow` section with each affected word and its elapsed milliseconds.
-Incorrect words use the entered text in that section; correct words use the
+shows a yellow `Slow` section with each affected word and its elapsed seconds.
+Incorrect words use `target/entered` in that section; correct words use the
 target text. Slow correct words remain visibly distinct from incorrect words
 while typing.
 

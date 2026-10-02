@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -378,9 +379,9 @@ func printSessionSummary(out io.Writer, session *Session) {
 		for _, attempt := range slow {
 			word := attempt.Target
 			if !attempt.Correct {
-				word = attempt.Entered
+				word += "/" + attempt.Entered
 			}
-			words = append(words, fmt.Sprintf("%s(%d)", word, attempt.Duration.Milliseconds()))
+			words = append(words, fmt.Sprintf("%s%s(%s)%s", ansiYellow, word, formatSeconds(attempt.Duration), ansiReset))
 		}
 		fmt.Fprintf(out, "%s\r\n", strings.Join(words, " "))
 	}
@@ -393,6 +394,18 @@ func printSessionSummary(out io.Writer, session *Session) {
 	fmt.Fprintf(out, "%s of %d words took %d seconds.\r\n", status, metrics.Attempted, int(metrics.Elapsed.Round(time.Second).Seconds()))
 	fmt.Fprintf(out, "WPM: %.1f (raw: %.1f)\r\n", metrics.PenalizedWPM, metrics.RawWPM)
 	fmt.Fprintf(out, "Acc: %.0f%% (%d/%d)\r\n", metrics.Accuracy, metrics.Correct, metrics.Attempted)
+}
+
+func formatSeconds(duration time.Duration) string {
+	value := strconv.FormatFloat(duration.Seconds(), 'f', 2, 64)
+	value = strings.TrimRight(strings.TrimRight(value, "0"), ".")
+	if strings.HasPrefix(value, "0.") {
+		value = value[1:]
+	}
+	if value == "-0" || value == "" {
+		return "0"
+	}
+	return value
 }
 
 func padRight(value string, width int) string {

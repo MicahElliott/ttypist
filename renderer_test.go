@@ -137,13 +137,25 @@ func TestPrintSessionSummaryShowsSlowWordsInMilliseconds(t *testing.T) {
 
 	var output bytes.Buffer
 	printSessionSummary(&output, session)
-	if got, want := output.String(), "Slow:\r\nsame(255) who(220)\r\n"; !strings.Contains(got, want) {
+	if got, want := output.String(), "Slow:\r\n\x1b[33msame(.26)\x1b[0m \x1b[33mwhich/who(.22)\x1b[0m\r\n"; !strings.Contains(got, want) {
 		t.Fatalf("summary slow words = %q, want substring %q", got, want)
 	}
 	if !strings.Contains(output.String(), "Missed:\r\n\x1b[31mwho\x1b[0m -> which\r\n\r\nSlow:\r\n") {
 		t.Fatalf("summary sections = %q, want blank line between sections", output.String())
 	}
-	if strings.Contains(output.String(), "who(220)\r\n\r\n\r\nTest") {
+	if strings.Contains(output.String(), "who(.22)\r\n\r\n\r\nTest") {
 		t.Fatalf("summary has too many blank lines before test: %q", output.String())
+	}
+}
+
+func TestFormatSecondsUsesCompactDecimalSeconds(t *testing.T) {
+	for duration, want := range map[time.Duration]string{
+		1300 * time.Millisecond: "1.3",
+		790 * time.Millisecond:  ".79",
+		2 * time.Second:         "2",
+	} {
+		if got := formatSeconds(duration); got != want {
+			t.Fatalf("formatSeconds(%s) = %q, want %q", duration, got, want)
+		}
 	}
 }

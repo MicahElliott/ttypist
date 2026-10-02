@@ -31,8 +31,8 @@ func defaultCLIOptions() cliOptions {
 	return cliOptions{
 		nwords:         50,
 		pool:           "1-200",
-		seed:           0,
-		slowPerRuneMS:  250,
+		seed:           time.Now().UnixNano(),
+		slowPerRuneMS:  150,
 		penaltySeconds: 1,
 	}
 }
@@ -56,7 +56,7 @@ func parseCLIArgs(args []string, stderr io.Writer) (cliOptions, []string, error)
 	flags.StringVar(&pattern, "pattern", pattern, "regular expression applied to dictionary words")
 	flags.StringVar(&options.dictionaryPath, "dict", "", "custom dictionary file")
 	flags.StringVar(&options.inputPath, "input", "", "file containing the target text")
-	flags.Int64Var(&options.seed, "seed", options.seed, "random selection seed")
+	flags.Int64Var(&options.seed, "seed", options.seed, "random selection seed (default: random)")
 	flags.IntVar(&options.slowPerRuneMS, "slow-ms-per-rune", options.slowPerRuneMS, "slow-word threshold in milliseconds per target rune")
 	flags.Float64Var(&options.targetWPM, "target-wpm", 0, "target WPM used to derive the slow-word threshold")
 	flags.Float64Var(&options.penaltySeconds, "penalty-seconds", options.penaltySeconds, "penalty added to elapsed time per incorrect word")

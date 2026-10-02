@@ -39,6 +39,12 @@ func TestParseCLIArgsSupportsRunConfiguration(t *testing.T) {
 	}
 }
 
+func TestDefaultCLISeedIsRandomized(t *testing.T) {
+	if got := defaultCLIOptions().seed; got == 0 {
+		t.Fatal("default CLI seed = 0, want a generated seed")
+	}
+}
+
 func TestResolveTargetsLoadsPlainInputAndDictionaryFiles(t *testing.T) {
 	directory := t.TempDir()
 	inputPath := directory + "/input.txt"
