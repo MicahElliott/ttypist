@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -44,9 +45,9 @@ func TestReadInputMapsEditingKeysAndUTF8(t *testing.T) {
 	if err != nil || !ok || input.Kind != InputSpace {
 		t.Fatalf("space input = %+v, %v, %v", input, ok, err)
 	}
-	_, ok, err = readInput(reader)
-	if err != nil || ok {
-		t.Fatalf("return input = %v, %v, want ignored", ok, err)
+	input, ok, err = readInput(reader)
+	if err != nil || !ok || input.Kind != InputReturn {
+		t.Fatalf("return input = %+v, %v, %v, want return event", input, ok, err)
 	}
 	input, ok, err = readInput(reader)
 	if err != nil || !ok || input.Kind != InputCtrlC {
@@ -63,6 +64,29 @@ func TestReadInputDiscardsCSIArrowSequence(t *testing.T) {
 	input, ok, err := readInput(reader)
 	if err != nil || !ok || input.Kind != InputRune || input.Rune != 'x' {
 		t.Fatalf("post-escape input = %+v, %v, %v", input, ok, err)
+	}
+}
+
+func TestPracticeUsesUniqueMissedWordsRepeatedly(t *testing.T) {
+	attempts := []Attempt{
+		{Target: "when"},
+		{Target: "when"},
+		{Target: "from"},
+	}
+	if got, want := practiceWords(attempts), []string{"when", "when", "when", "when", "from", "from", "from", "from"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("practice words = %v, want %v", got, want)
+	}
+}
+
+func TestMissedWordPracticeIsUntimedAndEndsOnReturn(t *testing.T) {
+	attempts := []Attempt{{Target: "when"}, {Target: "from"}}
+	var output bytes.Buffer
+	reader := bufio.NewReader(strings.NewReader("when nope\r"))
+	if err := runMissedWordPractice(&output, reader, 40, attempts); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := output.String(), "Practice: 2 words, 1 correct.\r\n"; !strings.Contains(got, want) {
+		t.Fatalf("practice output = %q, want substring %q", got, want)
 	}
 }
 

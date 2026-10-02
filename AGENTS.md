@@ -41,6 +41,8 @@ explicitly asks for an end-to-end MVP pass.
 - Leave completed input lines in terminal scrollback.
 - Space commits a word. Return is ignored. Backspace removes one character;
   `Ctrl-W` clears the current uncommitted word; `Ctrl-C` exits cleanly.
+- After a completed session with misses, offer an untimed free-form practice
+  round; Return or `Ctrl-C` ends practice without changing session metrics.
 - Start a word timer with its first printable rune and include correction time.
   Target-WPM timing overrides the default 250 ms per target rune when set.
 - Never split a word across lines or accept a word wider than the available

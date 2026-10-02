@@ -97,6 +97,9 @@ func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os
 			}
 			return nil
 		}
+		if input.Kind == InputReturn {
+			continue
+		}
 
 		line := paragraph.Lines[lineIndex]
 		printInputLine(out, session, line)
@@ -105,6 +108,11 @@ func runInteractiveWithConfig(targets []string, config InteractiveConfig, in *os
 			printSessionSummary(out, session)
 			if err := persistSession(store, session, config); err != nil {
 				return err
+			}
+			if len(missedAttempts(session)) > 0 {
+				if err := runMissedWordPractice(out, reader, width, missedAttempts(session)); err != nil {
+					return err
+				}
 			}
 			if err := checkCompletionThresholds(session.Metrics(time.Now()), config); err != nil {
 				return err
@@ -211,12 +219,111 @@ func readInput(reader *bufio.Reader) (Input, bool, error) {
 	case ' ':
 		return Input{Kind: InputSpace}, true, nil
 	case '\t', '\r', '\n':
-		return Input{}, false, nil
+		return Input{Kind: InputReturn}, true, nil
 	case 27:
 		return Input{}, false, discardEscapeSequence(reader)
 	default:
 		return RuneInput(r), true, nil
 	}
+}
+
+func missedAttempts(session *Session) []Attempt {
+	var missed []Attempt
+	for _, attempt := range session.Attempts() {
+		if !attempt.Correct {
+			missed = append(missed, attempt)
+		}
+	}
+	return missed
+}
+
+func practiceWords(attempts []Attempt) []string {
+	seen := make(map[string]bool)
+	words := make([]string, 0, len(attempts)*4)
+	for _, attempt := range attempts {
+		if seen[attempt.Target] {
+			continue
+		}
+		seen[attempt.Target] = true
+		for repeat := 0; repeat < 4; repeat++ {
+			words = append(words, attempt.Target)
+		}
+	}
+	return words
+}
+
+func runMissedWordPractice(out io.Writer, reader *bufio.Reader, width int, attempts []Attempt) error {
+	words := practiceWords(attempts)
+	paragraph, err := BuildParagraph(words, width)
+	if err != nil {
+		return err
+	}
+	valid := make(map[string]bool, len(attempts))
+	for _, attempt := range attempts {
+		valid[attempt.Target] = true
+	}
+
+	fmt.Fprint(out, "\r\nType these missed words (untimed; Return or Ctrl-C to finish):\r\n")
+	printTargetParagraph(out, words, paragraph)
+	fmt.Fprint(out, "\r\n> ")
+
+	var current []rune
+	entered := make([]string, 0)
+	for {
+		input, ok, err := readInput(reader)
+		if err != nil {
+			if errors.Is(err, errInputClosed) {
+				return nil
+			}
+			return err
+		}
+		if !ok {
+			continue
+		}
+		switch input.Kind {
+		case InputCtrlC, InputReturn:
+			if len(current) > 0 {
+				entered = append(entered, string(current))
+			}
+			fmt.Fprintf(out, "\r\nPractice: %d words, %d correct.\r\n", len(entered), countPracticeCorrect(entered, valid))
+			return nil
+		case InputRune:
+			current = append(current, input.Rune)
+		case InputSpace:
+			if len(current) > 0 {
+				entered = append(entered, string(current))
+				current = nil
+			}
+		case InputBackspace:
+			if len(current) > 0 {
+				current = current[:len(current)-1]
+			}
+		case InputDeleteWord:
+			current = nil
+		}
+		printPracticeInput(out, entered, current)
+	}
+}
+
+func printPracticeInput(out io.Writer, entered []string, current []rune) {
+	text := strings.Join(entered, " ")
+	if len(current) > 0 {
+		if text != "" {
+			text += " "
+		}
+		text += string(current)
+	}
+	fmt.Fprintf(out, "\r%s> %s", ansiClear, text)
+}
+
+func countPracticeCorrect(entered []string, valid map[string]bool) int {
+	correct := 0
+	for _, word := range entered {
+		if valid[word] {
+			correct++
+		}
+	}
+	return correct
 }
 
 func discardEscapeSequence(reader *bufio.Reader) error {

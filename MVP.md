@@ -137,8 +137,9 @@ Incorrect words use the entered text in that section; correct words use the
 target text. Slow correct words remain visibly distinct from incorrect words
 while typing.
 
-The missed-word practice round presents target words repeatedly in a free-form
-line. It is untimed and can be ended early.
+The missed-word practice round presents unique target words repeatedly in a
+free-form line. It is untimed, accepts the same editing keys, ends on Return or
+`Ctrl-C`, and reports how many entered words matched a missed target.
 
 ## Executable acceptance scenarios
 
@@ -188,6 +189,12 @@ end the session.
 Given the same dictionary, selection configuration, and seed, two sessions
 produce the same target sequence.
 
+### Missed-word practice
+
+Given a completed session with missed targets, the renderer presents those
+targets repeatedly, accepts free-form input without affecting session timing,
+and ends on Return or `Ctrl-C` with a practice result.
+
 ## Implementation sequence
 
 Complete these as small vertical slices. Each slice should leave the program
@@ -199,7 +206,7 @@ buildable and should add or update its acceptance tests.
 - [x] Add CLI configuration for word count, pool, pattern, custom input, seed,
   timing, penalties, and completion thresholds.
 - [x] Add session and per-word persistence under the XDG data directory.
-- [ ] Add the post-session missed-word practice round.
+- [x] Add the post-session missed-word practice round.
 - [ ] Add `stats` with recent sessions and hardest words.
 - [ ] Add PTY coverage for completion, `Ctrl-C`, terminal restoration, and
   prompt advancement.

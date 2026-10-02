@@ -27,6 +27,7 @@ const (
 	InputBackspace
 	InputDeleteWord
 	InputCtrlC
+	InputReturn
 )
 
 type Input struct {
