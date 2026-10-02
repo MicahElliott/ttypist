@@ -2,17 +2,22 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
+	"github.com/urfave/cli-altsrc/v3"
 	docs "github.com/urfave/cli-docs/v3"
 	"github.com/urfave/cli/v3"
+	"gopkg.in/yaml.v3"
 )
 
 type cliOptions struct {
@@ -28,6 +33,7 @@ type cliOptions struct {
 	penaltySeconds float64
 	minWPM         float64
 	minAccuracy    float64
+	configPath     string
 }
 
 func defaultCLIOptions() cliOptions {
@@ -45,9 +51,10 @@ func parseCLIArgs(args []string, stderr io.Writer) (cliOptions, []string, error)
 		args = args[1:]
 	}
 
+	configPath := ""
 	command := &cli.Command{
 		Name:      "ttypist",
-		Flags:     cliFlags(),
+		Flags:     cliFlags(&configPath),
 		Action:    func(context.Context, *cli.Command) error { return nil },
 		Writer:    io.Discard,
 		ErrWriter: stderr,
@@ -62,21 +69,72 @@ func parseCLIArgs(args []string, stderr io.Writer) (cliOptions, []string, error)
 	return options, command.Args().Slice(), nil
 }
 
-func cliFlags() []cli.Flag {
+func cliFlags(configPath *string) []cli.Flag {
 	defaults := defaultCLIOptions()
 	return []cli.Flag{
-		&cli.IntFlag{Name: "nwords", Aliases: []string{"n"}, Value: defaults.nwords, Usage: "number of words to select"},
-		&cli.StringFlag{Name: "pool", Aliases: []string{"p"}, Value: defaults.pool, Usage: "inclusive dictionary rank range, such as 1-200"},
-		&cli.StringFlag{Name: "pattern", Aliases: []string{"e"}, Value: ".", Usage: "regular expression applied to dictionary words"},
-		&cli.StringFlag{Name: "dict", Aliases: []string{"d"}, Usage: "custom dictionary file", TakesFile: true},
-		&cli.StringFlag{Name: "input", Aliases: []string{"i"}, Usage: "file containing the target text", TakesFile: true},
-		&cli.Int64Flag{Name: "seed", Aliases: []string{"s"}, Value: defaults.seed, Usage: "random selection seed (default: random)"},
-		&cli.IntFlag{Name: "slow-ms-per-rune", Value: defaults.slowPerRuneMS, Usage: "slow-word threshold in milliseconds per target rune"},
-		&cli.Float64Flag{Name: "target-wpm", Value: defaults.targetWPM, Usage: "target WPM used to derive the slow-word threshold"},
-		&cli.Float64Flag{Name: "penalty-seconds", Value: defaults.penaltySeconds, Usage: "penalty added to elapsed time per incorrect word"},
-		&cli.Float64Flag{Name: "min-wpm", Value: defaults.minWPM, Usage: "minimum penalized WPM for a successful completion"},
-		&cli.Float64Flag{Name: "min-accuracy", Value: defaults.minAccuracy, Usage: "minimum accuracy percentage for a successful completion"},
+		&cli.StringFlag{Name: "config", Aliases: []string{"c"}, Usage: "optional YAML, JSON, or TOML configuration file", TakesFile: true, Destination: configPath, Sources: cli.EnvVars("TTYP_CONFIG")},
+		&cli.IntFlag{Name: "nwords", Aliases: []string{"n"}, Value: defaults.nwords, Usage: "number of words to select", Sources: cliSources(configPath, "nwords", "TTYP_NWORDS")},
+		&cli.StringFlag{Name: "pool", Aliases: []string{"p"}, Value: defaults.pool, Usage: "inclusive dictionary rank range, such as 1-200", Sources: cliSources(configPath, "pool", "TTYP_POOL")},
+		&cli.StringFlag{Name: "pattern", Aliases: []string{"e"}, Value: ".", Usage: "regular expression applied to dictionary words", Sources: cliSources(configPath, "pattern", "TTYP_PATTERN")},
+		&cli.StringFlag{Name: "dict", Aliases: []string{"d"}, Usage: "custom dictionary file", TakesFile: true, Sources: cliSources(configPath, "dict", "TTYP_DICT")},
+		&cli.StringFlag{Name: "input", Aliases: []string{"i"}, Usage: "file containing the target text", TakesFile: true, Sources: cliSources(configPath, "input", "TTYP_INPUT")},
+		&cli.Int64Flag{Name: "seed", Aliases: []string{"s"}, Value: defaults.seed, Usage: "random selection seed (default: random)", Sources: cliSources(configPath, "seed", "TTYP_SEED")},
+		&cli.IntFlag{Name: "slow-ms-per-rune", Value: defaults.slowPerRuneMS, Usage: "slow-word threshold in milliseconds per target rune", Sources: cliSources(configPath, "slow-ms-per-rune", "TTYP_SLOW_MS_PER_RUNE")},
+		&cli.Float64Flag{Name: "target-wpm", Value: defaults.targetWPM, Usage: "target WPM used to derive the slow-word threshold", Sources: cliSources(configPath, "target-wpm", "TTYP_TARGET_WPM")},
+		&cli.Float64Flag{Name: "penalty-seconds", Value: defaults.penaltySeconds, Usage: "penalty added to elapsed time per incorrect word", Sources: cliSources(configPath, "penalty-seconds", "TTYP_PENALTY_SECONDS")},
+		&cli.Float64Flag{Name: "min-wpm", Value: defaults.minWPM, Usage: "minimum penalized WPM for a successful completion", Sources: cliSources(configPath, "min-wpm", "TTYP_MIN_WPM")},
+		&cli.Float64Flag{Name: "min-accuracy", Value: defaults.minAccuracy, Usage: "minimum accuracy percentage for a successful completion", Sources: cliSources(configPath, "min-accuracy", "TTYP_MIN_ACCURACY")},
 	}
+}
+
+func cliSources(configPath *string, key, envName string) cli.ValueSourceChain {
+	return cli.NewValueSourceChain(cli.EnvVar(envName), configFileSource(configPath, key))
+}
+
+func configFileSource(configPath *string, key string) cli.ValueSource {
+	return altsrc.NewValueSource(func(data []byte, destination any) error {
+		return unmarshalConfig(*configPath, data, destination)
+	}, "config", key, altsrc.NewStringPtrSourcer(configPath))
+}
+
+func unmarshalConfig(path string, data []byte, destination any) error {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".json":
+		var values map[string]any
+		if err := json.Unmarshal(data, &values); err != nil {
+			return err
+		}
+		mapped, ok := destination.(*map[any]any)
+		if !ok {
+			return errors.New("config JSON destination has an unexpected type")
+		}
+		*mapped = make(map[any]any, len(values))
+		for key, value := range values {
+			(*mapped)[key] = value
+		}
+		return nil
+	case ".toml":
+		return toml.Unmarshal(data, destination)
+	case ".yaml", ".yml":
+		return yaml.Unmarshal(data, destination)
+	default:
+		return fmt.Errorf("unsupported config format %q: use .json, .toml, .yaml, or .yml", filepath.Ext(path))
+	}
+}
+
+func validateConfigFile(path string) error {
+	if path == "" {
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read config file %q: %w", path, err)
+	}
+	var values map[any]any
+	if err := unmarshalConfig(path, data, &values); err != nil {
+		return fmt.Errorf("parse config file %q: %w", path, err)
+	}
+	return nil
 }
 
 func cliOptionsFromCommand(command *cli.Command) (cliOptions, error) {
@@ -91,6 +149,10 @@ func cliOptionsFromCommand(command *cli.Command) (cliOptions, error) {
 		penaltySeconds: command.Float64("penalty-seconds"),
 		minWPM:         command.Float64("min-wpm"),
 		minAccuracy:    command.Float64("min-accuracy"),
+		configPath:     command.String("config"),
+	}
+	if err := validateConfigFile(options.configPath); err != nil {
+		return cliOptions{}, err
 	}
 	pattern := command.String("pattern")
 	if options.nwords < 1 {
@@ -194,11 +256,13 @@ func resolveTargets(options cliOptions, positional []string) ([]string, error) {
 
 func newCLI(in *os.File, out, stderr io.Writer) *cli.Command {
 	runAction := runCommandAction(in, out)
+	configPath := ""
 	return &cli.Command{
 		Name:                   "ttypist",
 		Usage:                  "terminal typing tutor",
+		Description:            "Configuration precedence is CLI flags, environment variables, config file, then built-in defaults. Use TTYP_* variables or --config for non-CLI configuration.",
 		ArgsUsage:              "[words...]",
-		Flags:                  cliFlags(),
+		Flags:                  cliFlags(&configPath),
 		Commands:               []*cli.Command{{Name: "run", Aliases: []string{"r"}, Usage: "run a typing test", ArgsUsage: "[words...]", Action: runAction}, manCommand()},
 		Action:                 runAction,
 		EnableShellCompletion:  true,

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -51,6 +52,15 @@ func TestCLIGeneratesZshCompletionAndManPage(t *testing.T) {
 		t.Fatalf("completion = %q, want zsh compdef", completion.String())
 	}
 
+	var help bytes.Buffer
+	helpCLI := newCLI(nil, &help, io.Discard)
+	if err := helpCLI.Run(context.Background(), []string{"ttypist", "--help"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(help.String(), "TTYP_NWORDS") {
+		t.Fatalf("help = %q, want environment variable hint", help.String())
+	}
+
 	var man bytes.Buffer
 	manCLI := newCLI(nil, &man, io.Discard)
 	if err := manCLI.Run(context.Background(), []string{"ttypist", "man"}); err != nil {
@@ -58,6 +68,72 @@ func TestCLIGeneratesZshCompletionAndManPage(t *testing.T) {
 	}
 	if !strings.Contains(man.String(), ".TH ttypist 8") || !strings.Contains(man.String(), "--nwords") {
 		t.Fatalf("man page does not contain the command name and flags: %q", man.String())
+	}
+}
+
+func TestParseCLIArgsUsesEnvironmentConfigAndCLIPrecedence(t *testing.T) {
+	clearCLIEnv(t)
+	configPath := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(configPath, []byte("nwords = 12\npool = \"2-4\"\nseed = 21\ntarget-wpm = 45\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TTYP_CONFIG", configPath)
+	t.Setenv("TTYP_NWORDS", "9")
+	t.Setenv("TTYP_SEED", "22")
+
+	options, positional, err := parseCLIArgs([]string{"--nwords", "7", "one"}, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if options.nwords != 7 || options.pool != "2-4" || options.seed != 22 || options.targetWPM != 45 {
+		t.Fatalf("options = %+v, want CLI over env over config", options)
+	}
+	if strings.Join(positional, " ") != "one" {
+		t.Fatalf("positional = %v, want [one]", positional)
+	}
+}
+
+func TestParseCLIArgsSupportsJSONYAMLAndTOMLConfig(t *testing.T) {
+	clearCLIEnv(t)
+	tests := []struct {
+		extension string
+		contents  string
+	}{
+		{extension: ".json", contents: `{"nwords":12,"pool":"2-4","seed":21}`},
+		{extension: ".toml", contents: "nwords = 12\npool = \"2-4\"\nseed = 21\n"},
+		{extension: ".yaml", contents: "nwords: 12\npool: 2-4\nseed: 21\n"},
+	}
+	for _, test := range tests {
+		t.Run(test.extension, func(t *testing.T) {
+			configPath := filepath.Join(t.TempDir(), "config"+test.extension)
+			if err := os.WriteFile(configPath, []byte(test.contents), 0600); err != nil {
+				t.Fatal(err)
+			}
+			options, _, err := parseCLIArgs([]string{"--config", configPath}, io.Discard)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if options.nwords != 12 || options.pool != "2-4" || options.seed != 21 {
+				t.Fatalf("options = %+v, want values from %s", options, test.extension)
+			}
+		})
+	}
+}
+
+func TestParseCLIArgsRejectsInvalidConfigFile(t *testing.T) {
+	clearCLIEnv(t)
+	_, _, err := parseCLIArgs([]string{"--config", filepath.Join(t.TempDir(), "missing.toml")}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "read config file") {
+		t.Fatalf("error = %v, want missing config error", err)
+	}
+
+	configPath := filepath.Join(t.TempDir(), "config.ini")
+	if err := os.WriteFile(configPath, []byte("nwords=12\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = parseCLIArgs([]string{"--config", configPath}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "unsupported config format") {
+		t.Fatalf("error = %v, want unsupported format error", err)
 	}
 }
 
@@ -132,4 +208,26 @@ func reflectCLIOptions(got, want cliOptions) bool {
 		got.slowPerRuneMS == want.slowPerRuneMS &&
 		got.targetWPM == want.targetWPM && got.penaltySeconds == want.penaltySeconds &&
 		got.minWPM == want.minWPM && got.minAccuracy == want.minAccuracy
+}
+
+func clearCLIEnv(t *testing.T) {
+	t.Helper()
+	for _, name := range []string{
+		"TTYP_CONFIG", "TTYP_NWORDS", "TTYP_POOL", "TTYP_PATTERN", "TTYP_DICT", "TTYP_INPUT",
+		"TTYP_SEED", "TTYP_SLOW_MS_PER_RUNE", "TTYP_TARGET_WPM", "TTYP_PENALTY_SECONDS",
+		"TTYP_MIN_WPM", "TTYP_MIN_ACCURACY",
+	} {
+		old, wasSet := os.LookupEnv(name)
+		if err := os.Unsetenv(name); err != nil {
+			t.Fatal(err)
+		}
+		envName, previous, hadValue := name, old, wasSet
+		t.Cleanup(func() {
+			if hadValue {
+				_ = os.Setenv(envName, previous)
+			} else {
+				_ = os.Unsetenv(envName)
+			}
+		})
+	}
 }

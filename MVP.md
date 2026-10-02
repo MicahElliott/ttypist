@@ -115,6 +115,13 @@ make man
 man ./ttypist.1
 ```
 
+The same settings can come from `TTYP_*` environment variables, including
+`TTYP_NWORDS`, `TTYP_POOL`, `TTYP_SEED`, and `TTYP_TARGET_WPM`. An optional
+configuration file can be selected with `--config path/to/config.toml` or
+`TTYP_CONFIG`; JSON, YAML, and TOML files use keys matching the flag names.
+Configuration precedence is explicit CLI flags, environment variables, the
+selected config file, and built-in defaults.
+
 The default word list is the existing `10k-3.num` data file embedded in the
 binary. A custom dictionary or input source can override it. Editing the
 default word list is outside this MVP.

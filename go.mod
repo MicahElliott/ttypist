@@ -3,9 +3,12 @@ module ttypist
 go 1.25.2
 
 require (
+	github.com/BurntSushi/toml v1.5.0
+	github.com/urfave/cli-altsrc/v3 v3.1.0
 	github.com/urfave/cli-docs/v3 v3.1.0
 	github.com/urfave/cli/v3 v3.11.0
 	golang.org/x/term v0.36.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
