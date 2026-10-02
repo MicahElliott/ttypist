@@ -2,6 +2,14 @@ module ttypist
 
 go 1.25.2
 
-require golang.org/x/term v0.36.0
+require (
+	github.com/urfave/cli-docs/v3 v3.1.0
+	github.com/urfave/cli/v3 v3.11.0
+	golang.org/x/term v0.36.0
+)
 
-require golang.org/x/sys v0.37.0 // indirect
+require (
+	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
+)

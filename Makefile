@@ -1,4 +1,4 @@
-.PHONY: all build run test vet check fmt fmt-check tidy cover race install clean help
+.PHONY: all build run man completion-zsh test vet check fmt fmt-check tidy cover race install clean help
 
 # Go toolchain downloads need checksum verification.
 export GOSUMDB := sum.golang.org
@@ -17,6 +17,14 @@ build:
 # Example: make run WORDS='always man good same' 
 run: build
 	./$(BINARY) "$(WORDS)"
+
+man: build
+	@./$(BINARY) man > ttypist.1
+	@printf '%s\n' 'generated ttypist.1'
+
+completion-zsh: build
+	@./$(BINARY) completion zsh > ttypist.zsh
+	@printf '%s\n' 'generated ttypist.zsh'
 
 test:
 	$(GO) test ./...
@@ -45,12 +53,14 @@ install:
 	$(GO) install .
 
 clean:
-	rm -f $(BINARY) coverage.out
+	rm -f $(BINARY) coverage.out ttypist.1 ttypist.zsh
 
 help:
 	@printf '%s\n' \
 		'make run WORDS="one two three"  Build and run a session' \
 		'make build                       Build ./ttypist' \
+		'make man                         Generate ttypist.1' \
+		'make completion-zsh              Generate ttypist.zsh' \
 		'make check                       Format check, tests, and vet' \
 		'make test                        Run Go tests' \
 		'make vet                         Run go vet' \

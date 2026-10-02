@@ -1,6 +1,8 @@
 # Local build artifacts
 /ttypist
 /coverage.out
+/ttypist.1
+/ttypist.zsh
 *.test
 *.prof
 

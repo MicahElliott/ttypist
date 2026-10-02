@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	docs "github.com/urfave/cli-docs/v3"
+	"github.com/urfave/cli/v3"
 )
 
 type cliOptions struct {
@@ -38,53 +41,77 @@ func defaultCLIOptions() cliOptions {
 }
 
 func parseCLIArgs(args []string, stderr io.Writer) (cliOptions, []string, error) {
-	options := defaultCLIOptions()
 	if len(args) > 0 && args[0] == "run" {
 		args = args[1:]
 	}
 
-	flags := flag.NewFlagSet("ttypist", flag.ContinueOnError)
-	flags.SetOutput(stderr)
-	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: ttypist [run] [flags] [words]")
-		fmt.Fprintln(stderr, "       ttypist [run] [flags]  (select words from the dictionary)")
-		flags.PrintDefaults()
+	command := &cli.Command{
+		Name:      "ttypist",
+		Flags:     cliFlags(),
+		Action:    func(context.Context, *cli.Command) error { return nil },
+		Writer:    io.Discard,
+		ErrWriter: stderr,
 	}
-	flags.IntVar(&options.nwords, "nwords", options.nwords, "number of words to select")
-	flags.StringVar(&options.pool, "pool", options.pool, "inclusive dictionary rank range, such as 1-200")
-	pattern := "."
-	flags.StringVar(&pattern, "pattern", pattern, "regular expression applied to dictionary words")
-	flags.StringVar(&options.dictionaryPath, "dict", "", "custom dictionary file")
-	flags.StringVar(&options.inputPath, "input", "", "file containing the target text")
-	flags.Int64Var(&options.seed, "seed", options.seed, "random selection seed (default: random)")
-	flags.IntVar(&options.slowPerRuneMS, "slow-ms-per-rune", options.slowPerRuneMS, "slow-word threshold in milliseconds per target rune")
-	flags.Float64Var(&options.targetWPM, "target-wpm", 0, "target WPM used to derive the slow-word threshold")
-	flags.Float64Var(&options.penaltySeconds, "penalty-seconds", options.penaltySeconds, "penalty added to elapsed time per incorrect word")
-	flags.Float64Var(&options.minWPM, "min-wpm", 0, "minimum penalized WPM for a successful completion")
-	flags.Float64Var(&options.minAccuracy, "min-accuracy", 0, "minimum accuracy percentage for a successful completion")
-
-	if err := flags.Parse(args); err != nil {
+	if err := command.Run(context.Background(), append([]string{"ttypist"}, args...)); err != nil {
 		return cliOptions{}, nil, err
 	}
+	options, err := cliOptionsFromCommand(command)
+	if err != nil {
+		return cliOptions{}, nil, err
+	}
+	return options, command.Args().Slice(), nil
+}
+
+func cliFlags() []cli.Flag {
+	defaults := defaultCLIOptions()
+	return []cli.Flag{
+		&cli.IntFlag{Name: "nwords", Aliases: []string{"n"}, Value: defaults.nwords, Usage: "number of words to select"},
+		&cli.StringFlag{Name: "pool", Aliases: []string{"p"}, Value: defaults.pool, Usage: "inclusive dictionary rank range, such as 1-200"},
+		&cli.StringFlag{Name: "pattern", Aliases: []string{"e"}, Value: ".", Usage: "regular expression applied to dictionary words"},
+		&cli.StringFlag{Name: "dict", Aliases: []string{"d"}, Usage: "custom dictionary file", TakesFile: true},
+		&cli.StringFlag{Name: "input", Aliases: []string{"i"}, Usage: "file containing the target text", TakesFile: true},
+		&cli.Int64Flag{Name: "seed", Aliases: []string{"s"}, Value: defaults.seed, Usage: "random selection seed (default: random)"},
+		&cli.IntFlag{Name: "slow-ms-per-rune", Value: defaults.slowPerRuneMS, Usage: "slow-word threshold in milliseconds per target rune"},
+		&cli.Float64Flag{Name: "target-wpm", Value: defaults.targetWPM, Usage: "target WPM used to derive the slow-word threshold"},
+		&cli.Float64Flag{Name: "penalty-seconds", Value: defaults.penaltySeconds, Usage: "penalty added to elapsed time per incorrect word"},
+		&cli.Float64Flag{Name: "min-wpm", Value: defaults.minWPM, Usage: "minimum penalized WPM for a successful completion"},
+		&cli.Float64Flag{Name: "min-accuracy", Value: defaults.minAccuracy, Usage: "minimum accuracy percentage for a successful completion"},
+	}
+}
+
+func cliOptionsFromCommand(command *cli.Command) (cliOptions, error) {
+	options := cliOptions{
+		nwords:         command.Int("nwords"),
+		pool:           command.String("pool"),
+		dictionaryPath: command.String("dict"),
+		inputPath:      command.String("input"),
+		seed:           command.Int64("seed"),
+		slowPerRuneMS:  command.Int("slow-ms-per-rune"),
+		targetWPM:      command.Float64("target-wpm"),
+		penaltySeconds: command.Float64("penalty-seconds"),
+		minWPM:         command.Float64("min-wpm"),
+		minAccuracy:    command.Float64("min-accuracy"),
+	}
+	pattern := command.String("pattern")
 	if options.nwords < 1 {
-		return cliOptions{}, nil, errors.New("--nwords must be positive")
+		return cliOptions{}, errors.New("--nwords must be positive")
 	}
 	if options.slowPerRuneMS < 1 {
-		return cliOptions{}, nil, errors.New("--slow-ms-per-rune must be positive")
+		return cliOptions{}, errors.New("--slow-ms-per-rune must be positive")
 	}
 	if options.targetWPM < 0 || options.penaltySeconds < 0 || options.minWPM < 0 || options.minAccuracy < 0 || options.minAccuracy > 100 {
-		return cliOptions{}, nil, errors.New("timing and completion thresholds cannot be negative, and --min-accuracy must be at most 100")
+		return cliOptions{}, errors.New("timing and completion thresholds cannot be negative, and --min-accuracy must be at most 100")
 	}
 	compiledPattern, err := regexp.Compile(pattern)
 	if err != nil {
-		return cliOptions{}, nil, fmt.Errorf("invalid --pattern: %w", err)
+		return cliOptions{}, fmt.Errorf("invalid --pattern: %w", err)
 	}
 	options.pattern = compiledPattern
 	options.patternText = pattern
 	if _, _, err := parsePool(options.pool); err != nil {
-		return cliOptions{}, nil, err
+		return cliOptions{}, err
 	}
-	return options, flags.Args(), nil
+	return options, nil
 }
 
 func parsePool(value string) (int, int, error) {
@@ -165,42 +192,92 @@ func resolveTargets(options cliOptions, positional []string) ([]string, error) {
 	})
 }
 
-func runCLI(args []string, in *os.File, out, stderr io.Writer) int {
-	options, positional, err := parseCLIArgs(args, stderr)
-	if errors.Is(err, flag.ErrHelp) {
-		return 0
+func newCLI(in *os.File, out, stderr io.Writer) *cli.Command {
+	runAction := runCommandAction(in, out)
+	return &cli.Command{
+		Name:                   "ttypist",
+		Usage:                  "terminal typing tutor",
+		ArgsUsage:              "[words...]",
+		Flags:                  cliFlags(),
+		Commands:               []*cli.Command{{Name: "run", Aliases: []string{"r"}, Usage: "run a typing test", ArgsUsage: "[words...]", Action: runAction}, manCommand()},
+		Action:                 runAction,
+		EnableShellCompletion:  true,
+		Suggest:                true,
+		UseShortOptionHandling: true,
+		Writer:                 out,
+		ErrWriter:              stderr,
 	}
-	if err != nil {
-		if !errors.Is(err, flag.ErrHelp) {
-			fmt.Fprintln(stderr, err)
+}
+
+func runCommandAction(in *os.File, out io.Writer) cli.ActionFunc {
+	return func(_ context.Context, command *cli.Command) error {
+		options, err := cliOptionsFromCommand(command)
+		if err != nil {
+			return cli.Exit(err, 2)
+		}
+		targets, err := resolveTargets(options, command.Args().Slice())
+		if err != nil {
+			return cli.Exit(err, 1)
+		}
+		config := InteractiveConfig{
+			Selection: SessionSelection{
+				Count:      options.nwords,
+				Pool:       options.pool,
+				Pattern:    options.patternText,
+				Dictionary: options.dictionaryPath,
+				Input:      options.inputPath,
+				Seed:       options.seed,
+			},
+			Timing: TimingConfig{
+				SlowPerRune: time.Duration(options.slowPerRuneMS) * time.Millisecond,
+				TargetWPM:   options.targetWPM,
+				Penalty:     time.Duration(options.penaltySeconds * float64(time.Second)),
+			},
+			MinWPM:      options.minWPM,
+			MinAccuracy: options.minAccuracy,
+		}
+		if err := runInteractiveWithConfig(targets, config, in, out); err != nil {
+			return cli.Exit(err, 1)
+		}
+		return nil
+	}
+}
+
+func manCommand() *cli.Command {
+	return &cli.Command{
+		Name:   "man",
+		Usage:  "write the generated man page",
+		Hidden: true,
+		Action: func(_ context.Context, command *cli.Command) error {
+			man, err := docs.ToMan(command.Root())
+			if err != nil {
+				return cli.Exit(err, 1)
+			}
+			_, err = io.WriteString(command.Root().Writer, man)
+			if err != nil {
+				return cli.Exit(err, 1)
+			}
+			return nil
+		},
+	}
+}
+
+func runCLI(args []string, in *os.File, out, stderr io.Writer) int {
+	app := newCLI(in, out, stderr)
+	exitCode := 0
+	app.ExitErrHandler = func(_ context.Context, _ *cli.Command, err error) {
+		exitCode = 1
+		var exitErr cli.ExitCoder
+		if errors.As(err, &exitErr) {
+			exitCode = exitErr.ExitCode()
+		}
+		fmt.Fprintln(stderr, err)
+	}
+	if err := app.Run(context.Background(), append([]string{"ttypist"}, args...)); err != nil {
+		if exitCode != 0 {
+			return exitCode
 		}
 		return 2
 	}
-	targets, err := resolveTargets(options, positional)
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return 1
-	}
-	config := InteractiveConfig{
-		Selection: SessionSelection{
-			Count:      options.nwords,
-			Pool:       options.pool,
-			Pattern:    options.patternText,
-			Dictionary: options.dictionaryPath,
-			Input:      options.inputPath,
-			Seed:       options.seed,
-		},
-		Timing: TimingConfig{
-			SlowPerRune: time.Duration(options.slowPerRuneMS) * time.Millisecond,
-			TargetWPM:   options.targetWPM,
-			Penalty:     time.Duration(options.penaltySeconds * float64(time.Second)),
-		},
-		MinWPM:      options.minWPM,
-		MinAccuracy: options.minAccuracy,
-	}
-	if err := runInteractiveWithConfig(targets, config, in, out); err != nil {
-		fmt.Fprintln(stderr, err)
-		return 1
-	}
-	return 0
+	return exitCode
 }

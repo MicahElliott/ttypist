@@ -105,6 +105,16 @@ The CLI generates a random seed when `--seed` is omitted. Pass a fixed value,
 such as `--seed 1234`, when a repeatable word sequence is useful for debugging
 or practice.
 
+The command uses GNU-style long options with short aliases for common flags.
+Generate shell completion and a man page with:
+
+```sh
+make completion-zsh
+source ttypist.zsh
+make man
+man ./ttypist.1
+```
+
 The default word list is the existing `10k-3.num` data file embedded in the
 binary. A custom dictionary or input source can override it. Editing the
 default word list is outside this MVP.

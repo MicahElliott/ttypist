@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -36,6 +38,26 @@ func TestParseCLIArgsSupportsRunConfiguration(t *testing.T) {
 	}
 	if strings.Join(positional, " ") != "one two" {
 		t.Fatalf("positional = %v, want [one two]", positional)
+	}
+}
+
+func TestCLIGeneratesZshCompletionAndManPage(t *testing.T) {
+	var completion bytes.Buffer
+	completionCLI := newCLI(nil, &completion, io.Discard)
+	if err := completionCLI.Run(context.Background(), []string{"ttypist", "completion", "zsh"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(completion.String(), "#compdef ttypist") {
+		t.Fatalf("completion = %q, want zsh compdef", completion.String())
+	}
+
+	var man bytes.Buffer
+	manCLI := newCLI(nil, &man, io.Discard)
+	if err := manCLI.Run(context.Background(), []string{"ttypist", "man"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(man.String(), ".TH ttypist 8") || !strings.Contains(man.String(), "--nwords") {
+		t.Fatalf("man page does not contain the command name and flags: %q", man.String())
 	}
 }
 
