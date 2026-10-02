@@ -220,17 +220,28 @@ func (s *Session) Metrics(now time.Time) Metrics {
 	if m.Elapsed <= 0 {
 		return m
 	}
-	var targetRunes int
-	for _, attempt := range s.attempts {
-		targetRunes += utf8.RuneCountInString(attempt.Target)
-	}
+	targetCharacters := standardCharacterCount(s.attempts)
 	minutes := m.Elapsed.Minutes()
-	m.RawWPM = float64(targetRunes) / 5 / minutes
+	m.RawWPM = float64(targetCharacters) / 5 / minutes
 	penalized := m.Elapsed + time.Duration(m.Incorrect)*s.config.Penalty
 	if penalized > 0 {
-		m.PenalizedWPM = float64(targetRunes) / 5 / penalized.Minutes()
+		m.PenalizedWPM = float64(targetCharacters) / 5 / penalized.Minutes()
 	}
 	return m
+}
+
+// standardCharacterCount applies the conventional five-keystrokes-per-word
+// WPM definition. The spaces between committed target words count as
+// characters alongside the target runes.
+func standardCharacterCount(attempts []Attempt) int {
+	characters := 0
+	for _, attempt := range attempts {
+		characters += utf8.RuneCountInString(attempt.Target)
+	}
+	if len(attempts) > 1 {
+		characters += len(attempts) - 1
+	}
+	return characters
 }
 
 type ParagraphLine struct {

@@ -91,6 +91,33 @@ func TestIncorrectWordAdvances(t *testing.T) {
 	}
 }
 
+func TestMetricsCountsInterWordSpacesAsCharacters(t *testing.T) {
+	base := time.Unix(0, 0)
+	s := NewSession([]string{"one", "two"}, DefaultTimingConfig())
+	for _, input := range []struct {
+		word   string
+		start  time.Duration
+		finish time.Duration
+	}{
+		{word: "one", start: time.Second, finish: 2 * time.Second},
+		{word: "two", start: 3 * time.Second, finish: 4 * time.Second},
+	} {
+		for _, r := range input.word {
+			if err := s.Apply(RuneInput(r), base.Add(input.start)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := s.Apply(Input{Kind: InputSpace}, base.Add(input.finish)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	metrics := s.Metrics(base.Add(5 * time.Second))
+	if metrics.RawWPM < 27.99 || metrics.RawWPM > 28.01 || metrics.PenalizedWPM < 27.99 || metrics.PenalizedWPM > 28.01 {
+		t.Fatalf("metrics = %+v, want 28 WPM from seven characters including one space", metrics)
+	}
+}
+
 func TestParagraphUsesWholeLinesAndKeepsFinalWordsTogether(t *testing.T) {
 	targets := []string{"when", "this", "made", "while", "from", "however", "some", "between", "now", "world"}
 	paragraph, err := BuildParagraph(targets, 35)

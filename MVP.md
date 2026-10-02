@@ -73,7 +73,8 @@ session metadata.
 Session metrics are:
 
 - elapsed session time;
-- raw WPM based on target characters divided by five;
+- raw WPM based on target characters, including spaces between words, divided
+  by five;
 - accuracy as correct committed words divided by committed target words;
 - penalized WPM, using a configurable penalty per incorrect word;
 - correct, incorrect, and unattempted counts.
