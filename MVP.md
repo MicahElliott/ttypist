@@ -228,7 +228,7 @@ buildable and should add or update its acceptance tests.
   timing, penalties, and completion thresholds.
 - [x] Add session and per-word persistence under the XDG data directory.
 - [x] Add the post-session missed-word practice round.
-- [ ] Add `stats` with recent sessions and hardest words.
+- [x] Add `stats` with recent sessions and hardest words.
 - [ ] Add PTY coverage for completion, `Ctrl-C`, terminal restoration, and
   prompt advancement.
 - [ ] Recheck the release gate and document the finished command examples.

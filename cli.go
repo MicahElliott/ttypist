@@ -258,18 +258,54 @@ func newCLI(in *os.File, out, stderr io.Writer) *cli.Command {
 	runAction := runCommandAction(in, out)
 	configPath := ""
 	return &cli.Command{
-		Name:                   "ttypist",
-		Usage:                  "terminal typing tutor",
-		Description:            "Configuration precedence is CLI flags, environment variables, config file, then built-in defaults. Use TTYP_* variables or --config for non-CLI configuration.",
-		ArgsUsage:              "[words...]",
-		Flags:                  cliFlags(&configPath),
-		Commands:               []*cli.Command{{Name: "run", Aliases: []string{"r"}, Usage: "run a typing test", ArgsUsage: "[words...]", Action: runAction}, manCommand()},
+		Name:        "ttypist",
+		Usage:       "terminal typing tutor",
+		Description: "Configuration precedence is CLI flags, environment variables, config file, then built-in defaults. Use TTYP_* variables or --config for non-CLI configuration.",
+		ArgsUsage:   "[words...]",
+		Flags:       cliFlags(&configPath),
+		Commands: []*cli.Command{
+			{Name: "run", Aliases: []string{"r"}, Usage: "run a typing test", ArgsUsage: "[words...]", Action: runAction},
+			statsCommand(out),
+			manCommand(),
+		},
 		Action:                 runAction,
 		EnableShellCompletion:  true,
 		Suggest:                true,
 		UseShortOptionHandling: true,
 		Writer:                 out,
 		ErrWriter:              stderr,
+	}
+}
+
+func statsCommand(out io.Writer) *cli.Command {
+	return &cli.Command{
+		Name:  "stats",
+		Usage: "show recent sessions and hardest words",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "limit", Aliases: []string{"n"}, Value: defaultStatsLimit, Usage: "number of recent sessions to show"},
+			&cli.IntFlag{Name: "hardest", Value: defaultHardestLimit, Usage: "number of hardest words to show"},
+		},
+		Action: func(_ context.Context, command *cli.Command) error {
+			limit := command.Int("limit")
+			hardestLimit := command.Int("hardest")
+			if limit < 1 || hardestLimit < 1 {
+				return cli.Exit(errors.New("--limit and --hardest must be positive"), 2)
+			}
+			path, err := DefaultSessionStorePath()
+			if err != nil {
+				return cli.Exit(err, 1)
+			}
+			records, err := ReadSessionRecords(path)
+			if err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					printStats(out, StatsReport{})
+					return nil
+				}
+				return cli.Exit(fmt.Errorf("read session store: %w", err), 1)
+			}
+			printStats(out, BuildStatsReport(records, limit, hardestLimit))
+			return nil
+		},
 	}
 }
 
